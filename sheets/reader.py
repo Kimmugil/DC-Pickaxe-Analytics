@@ -69,8 +69,11 @@ def get_gallery_posts(sheet_url: str) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def get_analysis_results(date: str = None) -> pd.DataFrame:
-    """분석결과 시트에서 데이터를 읽습니다. date가 주어지면 해당 날짜만 반환."""
+def get_analysis_results(date: str = None, run_id: str = None) -> pd.DataFrame:
+    """
+    분석결과 시트에서 데이터를 읽습니다.
+    date와 run_id 모두 주어지면 AND 조건으로 필터링합니다.
+    """
     gc = _get_client()
     sh = gc.open_by_key(os.environ['ANALYTICS_SPREADSHEET_ID'])
     ws = sh.worksheet('분석결과')
@@ -80,10 +83,12 @@ def get_analysis_results(date: str = None) -> pd.DataFrame:
         return df
     if date:
         df = df[df['date'] == date]
+    if run_id:
+        df = df[df['run_id'] == run_id]
     return df.reset_index(drop=True)
 
 
-def get_cross_gallery_summary(date: str = None) -> pd.DataFrame:
+def get_cross_gallery_summary(date: str = None, run_id: str = None) -> pd.DataFrame:
     """종합요약 시트에서 크로스 갤러리 요약을 읽습니다."""
     gc = _get_client()
     sh = gc.open_by_key(os.environ['ANALYTICS_SPREADSHEET_ID'])
@@ -94,7 +99,31 @@ def get_cross_gallery_summary(date: str = None) -> pd.DataFrame:
         return df
     if date:
         df = df[df['date'] == date]
+    if run_id:
+        df = df[df['run_id'] == run_id]
     return df.reset_index(drop=True)
+
+
+def get_run_ids_for_date(date: str) -> list[str]:
+    """
+    특정 날짜에 존재하는 run_id 목록을 최신순(시트 뒤쪽 = 나중 분석)으로 반환합니다.
+    """
+    gc = _get_client()
+    sh = gc.open_by_key(os.environ['ANALYTICS_SPREADSHEET_ID'])
+    ws = sh.worksheet('분석결과')
+    records = ws.get_all_records()
+    if not records:
+        return []
+    df = pd.DataFrame(records)
+    df = df[df['date'] == date]
+    if df.empty:
+        return []
+    # 시트 순서 역순 → 가장 나중에 추가된 run_id가 앞에
+    seen: list[str] = []
+    for rid in reversed(df['run_id'].tolist()):
+        if rid and rid not in seen:
+            seen.append(rid)
+    return seen
 
 
 def get_posts_by_run_id(run_id: str) -> pd.DataFrame:

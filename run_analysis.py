@@ -131,9 +131,10 @@ def analyze_one_gallery(
 
 def main():
     parser = argparse.ArgumentParser(description='DC-Pickaxe Analytics 분석 봇')
-    parser.add_argument('--rerun',        type=str,            help='재분석할 run_id (8자리)')
-    parser.add_argument('--init-headers', action='store_true', help='시트 헤더 초기화 (최초 1회)')
-    parser.add_argument('--no-notion',    action='store_true', help='Notion 발행 건너뜀')
+    parser.add_argument('--rerun',         type=str,            help='재분석할 run_id (8자리)')
+    parser.add_argument('--init-headers',  action='store_true', help='시트 헤더 초기화 (최초 1회)')
+    parser.add_argument('--no-notion',     action='store_true', help='Notion 발행 건너뜀')
+    parser.add_argument('--analysis-date', type=str,            help='분석 기준일 YYYY-MM-DD (미입력 시 어제)')
     args = parser.parse_args()
 
     # 헤더 초기화 모드
@@ -143,8 +144,12 @@ def main():
         print("완료!")
         return
 
-    date_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-    run_id   = args.rerun if args.rerun else generate_run_id()
+    if args.analysis_date:
+        date_str = args.analysis_date
+    else:
+        date_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    run_id = args.rerun if args.rerun else generate_run_id()
 
     if args.rerun:
         print(f"=== 재분석 시작 ===")
