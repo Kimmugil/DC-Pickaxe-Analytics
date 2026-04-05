@@ -37,7 +37,7 @@ def render_keyword_tags(keywords: list | str, max_show: int = 20):
         ratio  = cnt / max_cnt
         size   = round(0.75 + ratio * 0.75, 2)   # 0.75 ~ 1.5rem
         alpha  = round(0.35 + ratio * 0.65, 2)    # 0.35 ~ 1.0
-        color  = f'rgba(255, 75, 75, {alpha})'
+        color  = f'rgba(255, 176, 32, {alpha})'   # amber
         tags_html += (
             f'<span class="kw-tag" style="background:{color};font-size:{size}rem;">'
             f'{word} <small style="opacity:.75">({cnt})</small></span>'
