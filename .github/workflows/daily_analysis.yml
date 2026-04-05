@@ -3,7 +3,7 @@ name: Daily DC-Pickaxe Analytics
 on:
   # 매일 00:00 KST (= UTC 15:00) 자동 실행
   schedule:
-    - cron: '0 15 * * *'
+    - cron: '0 0 * * *'  # 매일 09:00 KST (UTC 00:00)
 
   # 수동 실행 (GitHub Actions 탭에서 직접 트리거 가능)
   workflow_dispatch:

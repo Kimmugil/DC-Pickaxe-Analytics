@@ -86,7 +86,7 @@ def save_analysis_result(result: dict):
         result.get('total_posts', 0),
         result.get('new_posts_today', 0),
         result.get('new_posts_7d', 0),
-        result.get('active_authors', 0),
+        '',  # active_authors 제거 (DC 닉네임 기반 신뢰 불가) — 컬럼 위치 보존용
         json.dumps(result.get('top5_posts', []), ensure_ascii=False),
         json.dumps(result.get('top_keywords', []), ensure_ascii=False),
         json.dumps(result.get('hourly_dist', {}), ensure_ascii=False),

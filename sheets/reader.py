@@ -122,3 +122,39 @@ def get_available_dates() -> list[str]:
         return []
     df = pd.DataFrame(records)
     return sorted(df['date'].unique().tolist(), reverse=True)
+
+
+def get_gallery_trend(gallery_id: str, days: int = 30) -> list[dict]:
+    """
+    특정 갤러리의 최근 N일 일별 신규 게시글 수 추이를 반환합니다.
+
+    Returns:
+        [{'date': 'YYYY-MM-DD', 'count': int}, ...] 날짜 오름차순
+    """
+    gc = _get_client()
+    sh = gc.open_by_key(os.environ['ANALYTICS_SPREADSHEET_ID'])
+    ws = sh.worksheet('분석결과')
+    records = ws.get_all_records()
+    if not records:
+        return []
+
+    df = pd.DataFrame(records)
+    if df.empty or 'gallery_id' not in df.columns:
+        return []
+
+    gdf = df[df['gallery_id'] == gallery_id].copy()
+    if gdf.empty:
+        return []
+
+    # 날짜 필터
+    gdf['date'] = pd.to_datetime(gdf['date'], errors='coerce')
+    cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
+    gdf = gdf[gdf['date'] >= cutoff].sort_values('date')
+
+    result = []
+    for _, row in gdf.iterrows():
+        result.append({
+            'date':  str(row['date'])[:10],
+            'count': int(row.get('new_posts_today', 0)),
+        })
+    return result

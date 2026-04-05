@@ -14,7 +14,7 @@ import os
 import sys
 import uuid
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -117,7 +117,6 @@ def analyze_one_gallery(
         'total_posts':     trends.get('total_posts', 0),
         'new_posts_today': trends.get('new_posts_today', 0),
         'new_posts_7d':    trends.get('new_posts_7d', 0),
-        'active_authors':  activity.get('active_authors', 0),
         'top5_posts':      top5,
         'top_keywords':    keywords,
         'hourly_dist':     activity.get('hourly_dist', {}),
@@ -144,7 +143,7 @@ def main():
         print("완료!")
         return
 
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
     run_id   = args.rerun if args.rerun else generate_run_id()
 
     if args.rerun:

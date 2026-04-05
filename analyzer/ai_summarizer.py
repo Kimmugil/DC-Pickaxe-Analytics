@@ -13,6 +13,9 @@ from typing import List, Dict
 
 # 최근 7일 게시글이 이 수치 미만이면 AI 요약 대신 안내 메시지로 대체
 MIN_POSTS_FOR_AI = 5
+
+
+def _get_client():
     return genai.Client(api_key=os.environ['GEMINI_API_KEY'])
 
 
@@ -50,7 +53,7 @@ def summarize_gallery(
     갤러리별 AI 요약을 생성합니다.
 
     Args:
-        posts_df: 분석 대상 게시글 DataFrame
+        posts_df: 분석 대상 게시글 DataFrame (선택이유 컬럼 포함)
         gallery_name: 갤러리명
         stats: analyze_post_trends + analyze_activity 결과 합산 dict
         keywords: [(키워드, 빈도수), ...] 리스트
@@ -76,19 +79,29 @@ def summarize_gallery(
             f"아래 수집된 데이터를 직접 참고해주세요."
         )
 
-    sample_df = posts_df.copy()
-    sample_df['_score'] = sample_df['추천수'] * 2 + sample_df['댓글수']
-    sample_df = sample_df.nlargest(30, '_score')
+    # 분석기준일(24h) 게시글과 맥락용(7일) 게시글 분리
+    day_df = posts_df[posts_df.get('선택이유', pd.Series()) == '분석기준일(24h)'] if '선택이유' in posts_df.columns else posts_df
+    ctx_df = posts_df[posts_df.get('선택이유', pd.Series()) == '최근7일인기글(참고)'] if '선택이유' in posts_df.columns else pd.DataFrame()
 
-    post_lines = []
-    for _, row in sample_df.iterrows():
-        title = str(row.get('제목', ''))
-        body = str(row.get('본문', ''))[:100].replace('\n', ' ')
-        post_lines.append(
-            f"[추천{row.get('추천수', 0)}/댓글{row.get('댓글수', 0)}] {title}"
-            + (f" | {body}" if body else '')
-        )
-    posts_text = '\n'.join(post_lines)
+    # 24h 게시글 중 인게이지먼트 상위 30개
+    score_col = '_score'
+    day_df = day_df.copy()
+    day_df[score_col] = day_df['추천수'] * 2 + day_df['댓글수']
+    top_day = day_df.nlargest(30, score_col)
+
+    def fmt_posts(df: pd.DataFrame) -> str:
+        lines = []
+        for _, row in df.iterrows():
+            title = str(row.get('제목', ''))
+            body  = str(row.get('본문', ''))[:100].replace('\n', ' ')
+            lines.append(
+                f"[추천{row.get('추천수', 0)}/댓글{row.get('댓글수', 0)}] {title}"
+                + (f" | {body}" if body else '')
+            )
+        return '\n'.join(lines)
+
+    day_posts_text = fmt_posts(top_day)
+    ctx_posts_text = fmt_posts(ctx_df.head(10)) if not ctx_df.empty else '(없음)'
 
     keywords_text = ', '.join([f"{kw}({cnt})" for kw, cnt in keywords[:15]])
 
@@ -103,9 +116,8 @@ def summarize_gallery(
 
 [통계]
 - 총 게시글: {stats.get('total_posts', 0):,}개
-- 오늘 신규: {stats.get('new_posts_today', 0):,}개
+- 분석기준일(24h) 신규: {stats.get('new_posts_today', 0):,}개
 - 최근 7일: {stats.get('new_posts_7d', 0):,}개
-- 활성 작성자: {stats.get('active_authors', 0):,}명
 - 피크 시간대: {stats.get('peak_hour', 0)}시
 
 [자주 등장한 키워드]
@@ -114,10 +126,14 @@ def summarize_gallery(
 [주목할 신호]
 {signals_text}
 
-[최근 게시글 샘플 (추천+댓글 기준 정렬)]
-{posts_text}
+[분석기준일(24h) 주요 게시글 — 이것이 핵심 분석 대상입니다]
+{day_posts_text if day_posts_text else '(없음)'}
+
+[최근 7일 인기글 — 맥락 참고용]
+{ctx_posts_text}
 
 위 데이터를 바탕으로 아래 항목을 한국어 마크다운으로 작성하세요.
+분석기준일(24h) 게시글을 중심으로 분석하고, 7일 인기글은 맥락 파악에만 활용하세요.
 항목 외의 불필요한 서론·결론은 쓰지 마세요.
 
 ### 🔥 오늘의 주요 이슈
@@ -158,13 +174,14 @@ def summarize_all_galleries(gallery_results: List[Dict]) -> str:
             f"{MIN_POSTS_FOR_AI}건 미만이어서 종합 동향 분석이 어렵습니다."
         )
 
+    # 갤러리별 요약 블록 — 게시글 수와 관계없이 동등한 비중으로 제공
     gallery_blocks = []
     for result in active_results:
         summary_snippet = str(result.get('ai_summary', ''))[:400]
         gallery_blocks.append(
             f"**{result['gallery_name']}** "
-            f"(신규:{result.get('new_posts_today', 0)}건 / "
-            f"활성유저:{result.get('active_authors', 0)}명)\n"
+            f"(24h 신규:{result.get('new_posts_today', 0)}건 / "
+            f"7일 신규:{result.get('new_posts_7d', 0)}건)\n"
             f"{summary_snippet}"
         )
 
@@ -182,20 +199,23 @@ def summarize_all_galleries(gallery_results: List[Dict]) -> str:
 {combined}
 
 위 내용을 종합하여 아래 항목을 한국어 마크다운으로 작성하세요.
-항목 외의 불필요한 서론·결론은 쓰지 마세요.
+
+[분석 원칙]
+- 모든 갤러리에 동등한 비중을 두세요. 게시글 수가 많다고 더 중요하게 다루지 마세요.
+- 갤러리 간 공통으로 나타나는 패턴을 우선 포착하세요.
+- 항목 외의 불필요한 서론·결론은 쓰지 마세요.
 
 ## 📊 오늘의 키우기 장르 전체 동향
-(3~4문장: 장르 전반의 공통 이슈 또는 흐름)
+(3~4문장: 여러 갤러리에 걸쳐 공통적으로 나타나는 이슈 또는 흐름)
 
 ## 🏆 주목할 게임
-(2~3문장: 오늘 특히 활발하거나 이슈가 있는 게임과 그 이유)
-
-## 🌡️ 장르 민심 온도계
-(1~2문장: 키우기 게임 유저들의 전반적인 분위기를 한 줄로)
+(2~3문장: 오늘 특히 독특한 이슈·사건·신규 콘텐츠가 있는 게임과 그 구체적인 이유.
+유저 수나 게시글 수가 아닌 이슈의 특이성·영향력 기준으로 선정)
 
 ## 👀 이번 주 관찰 포인트
-(bullet 2~3개: 앞으로 주목해볼 트렌드나 신호)
+(bullet 2~3개: 여러 갤러리에서 공통으로 보이는 트렌드, 또는 특정 갤러리에서
+유독 폭발적으로 나타나는 단일 이슈 중 앞으로 주목해볼 신호)
 
-총 분량: 300~500자"""
+총 분량: 250~450자"""
 
     return _generate(prompt)
