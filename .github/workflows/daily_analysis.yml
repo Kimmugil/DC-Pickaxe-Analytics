@@ -1,0 +1,60 @@
+name: Daily DC-Pickaxe Analytics
+
+on:
+  # 매일 00:00 KST (= UTC 15:00) 자동 실행
+  schedule:
+    - cron: '0 15 * * *'
+
+  # 수동 실행 (GitHub Actions 탭에서 직접 트리거 가능)
+  workflow_dispatch:
+    inputs:
+      rerun_id:
+        description: '재분석할 run_id (비워두면 신규 분석)'
+        required: false
+        default: ''
+      no_notion:
+        description: 'Notion 발행 건너뜀 (true 입력 시 스킵)'
+        required: false
+        default: 'false'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run analysis bot
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL:                gemini-2.5-flash
+          NOTION_TOKEN:                ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID:          ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          EXTRA_ARGS=""
+
+          # 재분석 run_id가 입력된 경우
+          if [ -n "${{ github.event.inputs.rerun_id }}" ]; then
+            EXTRA_ARGS="--rerun ${{ github.event.inputs.rerun_id }}"
+          fi
+
+          # Notion 발행 건너뜀
+          if [ "${{ github.event.inputs.no_notion }}" = "true" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --no-notion"
+          fi
+
+          python run_analysis.py $EXTRA_ARGS
