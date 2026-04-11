@@ -95,7 +95,7 @@ def main():
             result['week_end']   = week_end_str
 
             save_weekly_gallery_result(result)
-            print(f"     저장 완료 ✓ ({total}건)")
+            print(f"     저장 완료 ({total}건)")
             gallery_results.append(result)
 
         except Exception as e:
@@ -111,7 +111,7 @@ def main():
     try:
         overview = summarize_weekly_overview(gallery_results, week_start_str, week_end_str)
         save_weekly_summary(run_id, week_start_str, week_end_str, overview)
-        print("종합 요약 저장 완료 ✓")
+        print("종합 요약 저장 완료")
     except Exception as e:
         print(f"종합 요약 오류: {e}")
         import traceback; traceback.print_exc()

@@ -115,12 +115,32 @@ def get_gallery_trend(gallery_id: str, days: int = 30) -> list[dict]:
 
 # ── Weekly ────────────────────────────────────────────────────────────
 
-def get_weekly_gallery_results(week_start: str) -> pd.DataFrame:
+def get_weekly_run_ids(week_start: str) -> list[str]:
+    """특정 주의 run_id 목록을 최신순으로 반환합니다."""
+    df = _analytics_sheet('주간종합')
+    if df.empty:
+        return []
+    df = df[df['week_start'] == week_start]
+    seen: list[str] = []
+    for rid in reversed(df['run_id'].tolist()):
+        if rid and rid not in seen:
+            seen.append(rid)
+    return seen
+
+
+def get_weekly_gallery_results(week_start: str, run_id: str = None) -> pd.DataFrame:
     """특정 주의 갤러리별 주간 분석 결과를 반환합니다."""
     df = _analytics_sheet('주간분석')
     if df.empty:
         return df
-    return df[df['week_start'] == week_start].reset_index(drop=True)
+    df = df[df['week_start'] == week_start]
+    if run_id:
+        df = df[df['run_id'] == run_id]
+    elif not df.empty and 'run_id' in df.columns:
+        # run_id 미지정 시 가장 최신 run_id만 사용
+        latest_rid = df['run_id'].iloc[-1]
+        df = df[df['run_id'] == latest_rid]
+    return df.reset_index(drop=True)
 
 
 def get_weekly_summary(week_start: str) -> pd.DataFrame:

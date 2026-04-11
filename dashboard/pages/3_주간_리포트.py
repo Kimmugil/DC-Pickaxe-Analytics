@@ -37,17 +37,22 @@ if not week_start:
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
-def load_weekly_data(ws: str):
+def load_weekly_data(ws: str, run_id: str = None):
     from sheets.reader import get_weekly_gallery_results, get_weekly_summary
-    gallery_df = get_weekly_gallery_results(ws)
+    gallery_df = get_weekly_gallery_results(ws, run_id=run_id)
     summary_df = get_weekly_summary(ws)
     return gallery_df, summary_df
 
 
 try:
-    gallery_df, summary_df = load_weekly_data(week_start)
+    from sheets.reader import get_weekly_run_ids
+    weekly_run_ids = get_weekly_run_ids(week_start)
+    selected_run_id = st.session_state.get('report_weekly_run_id', weekly_run_ids[0] if weekly_run_ids else None)
+    gallery_df, summary_df = load_weekly_data(week_start, selected_run_id)
 except Exception as e:
     st.error(f'데이터 로딩 오류: {e}')
+    weekly_run_ids = []
+    selected_run_id = None
     st.stop()
 
 
@@ -76,9 +81,23 @@ with st.sidebar:
             )
             if sel_ws != week_start:
                 st.session_state['report_week_start'] = sel_ws
+                st.session_state.pop('report_weekly_run_id', None)
                 st.rerun()
     except Exception:
         pass
+
+    # run_id 선택 (같은 주에 여러 run 있을 때)
+    if 'weekly_run_ids' in dir() and len(weekly_run_ids) > 1:
+        st.divider()
+        sel_rid = st.selectbox(
+            '분석 회차',
+            options=weekly_run_ids,
+            format_func=lambda x, ids=weekly_run_ids: f'{x}{"  ← 최신" if x == ids[0] else ""}',
+            key='sel_weekly_run',
+        )
+        if sel_rid != selected_run_id:
+            st.session_state['report_weekly_run_id'] = sel_rid
+            st.rerun()
 
     st.divider()
     st.markdown(
