@@ -1,24 +1,20 @@
-name: Daily DC-Pickaxe Analytics
+name: Weekly DC-Pickaxe Analytics
 
 on:
-  # 매일 09:00 KST (= UTC 00:00) 자동 실행
+  # 매주 월요일 09:00 KST (= UTC 00:00) 자동 실행 — 지난 주 월~일 분석
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * 1'
 
   # 수동 실행 (GitHub Actions 탭에서 직접 트리거 가능)
   workflow_dispatch:
     inputs:
-      rerun_id:
-        description: '재분석할 run_id (비워두면 신규 분석)'
-        required: false
-        default: ''
-      analysis_date:
-        description: '분석 기준일 YYYY-MM-DD (비워두면 어제)'
+      week_start:
+        description: '분석 시작일 YYYY-MM-DD (월요일, 비워두면 지난 주)'
         required: false
         default: ''
 
 jobs:
-  analyze:
+  weekly-analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -35,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run analysis bot
+      - name: Run weekly analysis bot
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
@@ -44,10 +40,7 @@ jobs:
           GEMINI_MODEL:                gemini-2.5-flash
         run: |
           EXTRA_ARGS=""
-          if [ -n "${{ github.event.inputs.rerun_id }}" ]; then
-            EXTRA_ARGS="--rerun ${{ github.event.inputs.rerun_id }}"
+          if [ -n "${{ github.event.inputs.week_start }}" ]; then
+            EXTRA_ARGS="--week-start ${{ github.event.inputs.week_start }}"
           fi
-          if [ -n "${{ github.event.inputs.analysis_date }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --analysis-date ${{ github.event.inputs.analysis_date }}"
-          fi
-          python run_analysis.py $EXTRA_ARGS
+          python run_weekly.py $EXTRA_ARGS

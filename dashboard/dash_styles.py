@@ -1,107 +1,72 @@
 """
-DC-Pickaxe Analytics 디자인 시스템 v2
-다크 사이드바 + 앰버 차트 + 틴티드 스탯카드
+DC-Pickaxe Analytics 디자인 시스템 v3
+B&W — 검정/흰색/회색만 사용
 """
 
 # ── Color tokens ─────────────────────────────────────────────────────
-C_AMBER   = '#FFB020'   # primary accent
-C_GREEN   = '#22C55E'   # positive / trend
-C_RED     = '#EF4444'   # alert
-C_BLUE    = '#3B82F6'   # info
-C_PURPLE  = '#A855F7'   # misc
-
-C_BG      = '#F1F5F9'   # page background
-C_CARD    = '#FFFFFF'
-C_SIDEBAR = '#0F172A'   # dark sidebar
-
-C_TEXT1   = '#0F172A'
-C_TEXT2   = '#64748B'
-C_TEXT3   = '#94A3B8'
-C_BORDER  = '#E2E8F0'
-
-# Tinted stat card backgrounds
-TINT_AMBER  = '#FFFBEB'
-TINT_GREEN  = '#F0FDF4'
-TINT_BLUE   = '#EFF6FF'
-TINT_PURPLE = '#FAF5FF'
+C_BLACK  = '#0A0A0A'
+C_DARK   = '#1A1A1A'
+C_MID    = '#555555'
+C_LIGHT  = '#AAAAAA'
+C_PALE   = '#DDDDDD'
+C_BG     = '#F5F5F5'
+C_CARD   = '#FFFFFF'
+C_TEXT1  = '#0A0A0A'
+C_TEXT2  = '#333333'
+C_TEXT3  = '#888888'
+C_BORDER = '#DDDDDD'
 
 GALLERY_COLORS = [
-    '#FFB020', '#22C55E', '#3B82F6', '#A855F7',
-    '#EF4444', '#06B6D4', '#F97316', '#84CC16',
+    '#0A0A0A', '#333333', '#555555', '#777777',
+    '#222222', '#444444', '#666666', '#999999',
 ]
 
 CSS = """
 <style>
-/* ── Page & sidebar ── */
-[data-testid="stAppViewContainer"] > .main { background: #F1F5F9; }
+/* ── Page ── */
+[data-testid="stAppViewContainer"] > .main { background: #F5F5F5; }
 section.main .block-container { padding-top: 1.2rem; padding-bottom: 2rem; }
 
-[data-testid="stSidebar"] {
-    background: #0F172A !important;
-    border-right: 1px solid #1E293B;
-}
-[data-testid="stSidebar"] * { color: #CBD5E1 !important; }
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3, [data-testid="stSidebar"] strong {
-    color: #F1F5F9 !important;
-}
-[data-testid="stSidebar"] hr {
-    border-color: #1E293B !important; opacity: 1;
-}
-[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div,
-[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    color: #CBD5E1 !important;
-}
+/* ── Sidebar ── */
+[data-testid="stSidebar"] { background: #FAFAFA !important; border-right: 1px solid #DDDDDD; }
+[data-testid="stSidebar"] * { color: #333333 !important; }
+[data-testid="stSidebar"] hr { border-color: #DDDDDD !important; opacity: 1; }
 [data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
-    background: #1E293B !important;
-    border-color: #334155 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    padding: 6px 8px; border-radius: 8px;
-    transition: background .15s;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-    background: #1E293B !important;
+    background: #F0F0F0 !important; border-color: #CCCCCC !important;
 }
 
 /* ── Card ── */
 .lc {
     background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 14px;
+    border: 1px solid #DDDDDD;
+    border-radius: 10px;
     padding: 18px 22px;
     margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(15,23,42,.06);
 }
 
 /* ── Stat cards ── */
 .sc {
-    border-radius: 12px;
+    border-radius: 10px;
     padding: 16px 18px;
     margin-bottom: 8px;
-    border: 1px solid transparent;
+    background: #FFFFFF;
+    border: 1px solid #DDDDDD;
 }
-.sc-amber  { background: #FFFBEB; border-color: #FDE68A; }
-.sc-green  { background: #F0FDF4; border-color: #BBF7D0; }
-.sc-blue   { background: #EFF6FF; border-color: #BFDBFE; }
-.sc-purple { background: #FAF5FF; border-color: #DDD6FE; }
-.sc-plain  { background: #FFFFFF; border-color: #E2E8F0; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-
-.sc-val  { font-size: 1.7rem; font-weight: 800; color: #0F172A; line-height: 1.1; }
-.sc-lbl  { font-size: 0.78rem; color: #64748B; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
-.sc-sub  { font-size: 0.72rem; color: #94A3B8; margin-top: 2px; }
+.sc-val  { font-size: 1.7rem; font-weight: 800; color: #0A0A0A; line-height: 1.1; }
+.sc-lbl  { font-size: 0.78rem; color: #555555; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+.sc-sub  { font-size: 0.72rem; color: #888888; margin-top: 2px; }
 
 /* ── Tooltip ── */
 .tip-wrap { position: relative; display: inline-flex; align-items: center; cursor: help; }
 .tip-icon {
-    width: 14px; height: 14px; background: #94A3B8; color: white;
+    width: 14px; height: 14px; background: #AAAAAA; color: white;
     border-radius: 50%; font-size: 9px; font-weight: 700;
     display: inline-flex; align-items: center; justify-content: center;
     margin-left: 3px; flex-shrink: 0;
 }
 .tip-box {
     visibility: hidden; opacity: 0;
-    background: #0F172A; color: #F1F5F9;
+    background: #1A1A1A; color: #F5F5F5;
     font-size: 0.72rem; line-height: 1.55;
     padding: 8px 11px; border-radius: 8px;
     position: absolute; bottom: 130%; left: 50%;
@@ -114,92 +79,84 @@ section.main .block-container { padding-top: 1.2rem; padding-bottom: 2rem; }
 .tip-box::after {
     content: ''; position: absolute; top: 100%; left: 50%;
     transform: translateX(-50%);
-    border: 5px solid transparent; border-top-color: #0F172A;
+    border: 5px solid transparent; border-top-color: #1A1A1A;
 }
 .tip-wrap:hover .tip-box { visibility: visible; opacity: 1; }
 
 /* ── Section header ── */
 .sec-hdr {
-    font-size: 0.9rem; font-weight: 700; color: #0F172A;
+    font-size: 0.9rem; font-weight: 700; color: #0A0A0A;
     padding-bottom: 8px; margin-bottom: 12px;
-    border-bottom: 2px solid #FFB020;
+    border-bottom: 2px solid #0A0A0A;
     display: inline-block;
-}
-
-/* ── Hero (gallery page header) ── */
-.hero-card {
-    background: white; border: 1px solid #E2E8F0;
-    border-radius: 14px; padding: 18px 24px 16px;
-    margin-bottom: 14px;
-    border-left: 5px solid #FFB020;
-    box-shadow: 0 1px 4px rgba(15,23,42,.06);
-}
-.hero-title { font-size: 1.4rem; font-weight: 800; color: #0F172A; line-height: 1.2; }
-.hero-meta  { font-size: 0.8rem; color: #64748B; margin-top: 5px; display: flex; align-items: center; gap: 10px; }
-.hero-badge {
-    display: inline-block;
-    background: #FFFBEB; color: #92400E;
-    border: 1px solid #FDE68A;
-    border-radius: 6px; font-size: 0.75rem; font-weight: 700;
-    padding: 2px 8px;
 }
 
 /* ── Top post item ── */
 .top-post {
     display: flex; align-items: flex-start; gap: 12px;
     padding: 10px 14px; margin-bottom: 6px;
-    background: #F8FAFC; border-radius: 10px;
-    border-left: 3px solid #FFB020;
+    background: #F8F8F8; border-radius: 8px;
+    border-left: 3px solid #333333;
 }
-.top-post-rank { font-size: 1.1rem; font-weight: 800; color: #FFB020; min-width: 20px; }
-.top-post-title { font-size: 0.88rem; font-weight: 600; color: #0F172A; line-height: 1.4; }
-.top-post-meta  { font-size: 0.75rem; color: #64748B; margin-top: 2px; }
+.top-post-rank  { font-size: 1.1rem; font-weight: 800; color: #333333; min-width: 20px; }
+.top-post-title { font-size: 0.88rem; font-weight: 600; color: #0A0A0A; line-height: 1.4; }
+.top-post-meta  { font-size: 0.75rem; color: #555555; margin-top: 2px; }
 
 /* ── Keyword tag ── */
 .kw-tag {
     display: inline-block; margin: 2px 3px;
     padding: 3px 10px; border-radius: 20px;
-    font-size: 0.82rem; font-weight: 500; color: white;
+    font-size: 0.82rem; font-weight: 500;
+    background: #EEEEEE; color: #1A1A1A;
+    border: 1px solid #CCCCCC;
 }
 
-/* ── Signal card ── */
-.sig-card {
-    background: white; border: 1px solid #E2E8F0;
-    border-radius: 10px; padding: 12px 16px; margin-bottom: 8px;
+/* ── Calendar ── */
+.cal-wrap { background: #FFFFFF; border: 1px solid #DDDDDD; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.cal-title { font-size: 0.9rem; font-weight: 700; color: #0A0A0A; margin-bottom: 10px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 0.72rem; font-weight: 700; color: #888888; padding: 4px 0; }
+.cal-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.82rem; color: #333333;
+    min-height: 36px;
 }
-.sig-label { font-size: 0.84rem; font-weight: 600; color: #0F172A; margin-bottom: 6px; }
-.sig-bar-bg { background: #F1F5F9; border-radius: 4px; height: 6px; width: 100%; }
-.sig-bar-fill { border-radius: 4px; height: 6px; }
-.sig-meta { font-size: 0.76rem; color: #64748B; margin-top: 5px; }
+.cal-cell.empty { background: transparent; }
+.cal-cell.has-report { background: #F0F0F0; }
+.cal-cell.has-report:hover { background: #E0E0E0; }
+.cal-cell.has-report a {
+    text-decoration: none; color: #0A0A0A; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; width: 100%; height: 100%;
+}
+.cal-badge {
+    font-size: 0.6rem; font-weight: 700; padding: 1px 4px;
+    border-radius: 3px; margin-top: 2px; line-height: 1.4;
+}
+.cal-badge-d { background: #555555; color: white; }
+.cal-badge-w { background: #0A0A0A; color: white; }
+.cal-badge-b { background: #0A0A0A; color: white; }
+.cal-today { outline: 2px solid #0A0A0A; outline-offset: -2px; }
 
-/* ── Cross-summary (AI overview) ── */
-.cross-card {
-    background: white; border: 1px solid #E2E8F0; border-radius: 14px;
-    padding: 20px 26px; margin-bottom: 14px;
-    border-left: 5px solid #22C55E;
-    box-shadow: 0 1px 4px rgba(15,23,42,.06);
-    line-height: 1.7;
+/* ── Weekly summary card ── */
+.weekly-card {
+    background: #FFFFFF; border: 1px solid #DDDDDD; border-radius: 10px;
+    padding: 20px 24px; margin-bottom: 14px; line-height: 1.75;
+    color: #1A1A1A;
+}
+.weekly-card h2, .weekly-card h3 { color: #0A0A0A; margin-top: 0.8em; }
+
+/* ── Issue badge ── */
+.issue-badge {
+    display: inline-block; background: #1A1A1A; color: white;
+    border-radius: 4px; font-size: 0.72rem; font-weight: 700; padding: 2px 7px;
 }
 
-/* ── Gallery nav item (sidebar) ── */
-.nav-gallery {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 8px; margin-bottom: 2px;
-    cursor: default;
-}
-.nav-dot {
-    width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
-}
-.nav-name { font-size: 0.85rem; color: #CBD5E1; flex: 1; }
-.nav-cnt  { font-size: 0.75rem; color: #64748B; }
-
-/* ── Run-id badge ── */
-.run-badge {
-    display: inline-block; font-family: monospace;
-    font-size: 0.78rem; background: #F8FAFC;
-    border: 1px solid #E2E8F0; border-radius: 4px;
-    padding: 1px 7px; color: #64748B;
-}
+/* ── Signal bar ── */
+.sig-bar-bg   { background: #EEEEEE; border-radius: 4px; height: 6px; width: 100%; }
+.sig-bar-fill { background: #333333; border-radius: 4px; height: 6px; }
+.sig-meta     { font-size: 0.76rem; color: #555555; margin-top: 4px; }
 </style>
 """
 
@@ -223,14 +180,13 @@ def stat_card(
     label: str,
     value: str,
     sub: str = '',
-    tint: str = 'plain',   # 'amber' | 'green' | 'blue' | 'purple' | 'plain'
+    tint: str = 'plain',
     tooltip: str = '',
 ) -> str:
-    """틴티드 스탯 카드 HTML."""
     tip_html = tip(tooltip) if tooltip else ''
     sub_html = f'<div class="sc-sub">{sub}</div>' if sub else ''
     return (
-        f'<div class="sc sc-{tint}">'
+        f'<div class="sc">'
         f'<div class="sc-val">{value}</div>'
         f'<div class="sc-lbl">{label}{tip_html}</div>'
         f'{sub_html}'
@@ -238,7 +194,6 @@ def stat_card(
     )
 
 
-# backward compat alias
 def kpi_block(label, value, sub='', tooltip='', tint='plain'):
     return stat_card(label, value, sub, tint, tooltip)
 
@@ -248,28 +203,18 @@ def sec_header(title: str) -> str:
 
 
 def hero_card(title: str, meta_html: str = '', badge: str = '') -> str:
-    badge_html = f'<span class="hero-badge">{badge}</span>' if badge else ''
+    badge_html = f'<span class="issue-badge">{badge}</span>' if badge else ''
     return (
-        f'<div class="hero-card">'
-        f'<div class="hero-title">{title}</div>'
-        f'<div class="hero-meta">{meta_html}{badge_html}</div>'
+        f'<div class="lc" style="border-left:4px solid #0A0A0A;">'
+        f'<div style="font-size:1.2rem;font-weight:800;color:#0A0A0A;">{title}</div>'
+        f'<div style="font-size:0.8rem;color:#555555;margin-top:5px;'
+        f'display:flex;align-items:center;gap:10px;">{meta_html}{badge_html}</div>'
         f'</div>'
     )
 
 
 def cross_card(content_html: str) -> str:
-    return f'<div class="cross-card">{content_html}</div>'
-
-
-def gallery_sidebar_item(name: str, count: int, color: str, selected: bool = False) -> str:
-    bg = '#1E293B' if selected else 'transparent'
-    return (
-        f'<div class="nav-gallery" style="background:{bg};">'
-        f'<span class="nav-dot" style="background:{color};"></span>'
-        f'<span class="nav-name">{name}</span>'
-        f'<span class="nav-cnt">{count:,}</span>'
-        f'</div>'
-    )
+    return f'<div class="weekly-card">{content_html}</div>'
 
 
 def gallery_color(index: int) -> str:

@@ -1,6 +1,6 @@
 """
-DC-Pickaxe Analytics — 순수 SVG 차트 모음 v2
-앰버(#FFB020) 기본색, 그린(#22C55E) 추이선
+DC-Pickaxe Analytics — 순수 SVG 차트 모음 v3
+B&W — 검정/회색만 사용
 """
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ def vbar(
     data: dict,
     width: int = 580,
     height: int = 160,
-    color: str = '#FFB020',
-    muted: str = '#E2E8F0',
+    color: str = '#333333',
+    muted: str = '#DDDDDD',
 ) -> str:
     """
     세로 막대 차트 — 24시간 시간대 분포용.
-    data: {"0": count, ..., "23": count}  피크 막대는 color(앰버)로 강조.
+    data: {"0": count, ..., "23": count}  피크 막대는 color(다크)로 강조.
     """
     keys   = list(data.keys())
     values = [int(data.get(k, 0)) for k in keys]
@@ -42,12 +42,12 @@ def vbar(
         gv = int(max_val * pct)
         elems.append(
             f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{width - PAD_R}" y2="{gy:.1f}"'
-            f' stroke="#F1F5F9" stroke-width="1"/>'
+            f' stroke="#F0F0F0" stroke-width="1"/>'
         )
         if pct in [0.5, 1.0]:
             elems.append(
                 f'<text x="{PAD_L - 3}" y="{gy + 4:.1f}" text-anchor="end"'
-                f' font-size="10" fill="#94A3B8">{gv}</text>'
+                f' font-size="10" fill="#888888">{gv}</text>'
             )
 
     # Bars + labels
@@ -56,7 +56,6 @@ def vbar(
         bx   = PAD_L + i * (bar_w + gap)
         by   = PAD_T + ch - bh
         fill = color if i == peak_i else muted
-        # Rounded-top bar (fake with rect + circle)
         if bh > 4:
             elems.append(
                 f'<rect x="{bx:.1f}" y="{by + 3:.1f}" width="{bar_w:.1f}" height="{max(bh - 3, 0):.1f}"'
@@ -72,13 +71,11 @@ def vbar(
                 f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}" height="{max(bh, 0):.1f}"'
                 f' fill="{fill}" rx="2"/>'
             )
-        # Peak label
         if i == peak_i and v > 0:
             elems.append(
                 f'<text x="{bx + bar_w / 2:.1f}" y="{by - 3:.1f}" text-anchor="middle"'
                 f' font-size="9" font-weight="700" fill="{color}">{v}</text>'
             )
-        # X-label every 3h
         try:
             hour = int(k)
         except ValueError:
@@ -87,7 +84,7 @@ def vbar(
             lx = bx + bar_w / 2
             elems.append(
                 f'<text x="{lx:.1f}" y="{height - 4}" text-anchor="middle"'
-                f' font-size="10" fill="#94A3B8">{hour}시</text>'
+                f' font-size="10" fill="#888888">{hour}시</text>'
             )
 
     return _svg(width, height, elems)
@@ -96,8 +93,8 @@ def vbar(
 def hbar(
     items: list[tuple],
     width: int = 580,
-    color: str = '#FFB020',
-    bg_color: str = '#F8FAFC',
+    color: str = '#333333',
+    bg_color: str = '#F5F5F5',
     label_w: int = 110,
 ) -> str:
     """
@@ -109,20 +106,19 @@ def hbar(
     if n == 0:
         return _empty(width, 40)
 
-    ROW_H           = 30
+    ROW_H            = 30
     PAD_T, PAD_B, PAD_R = 6, 4, 16
-    height          = n * ROW_H + PAD_T + PAD_B
-    bar_area        = max(10, width - label_w - PAD_R)
-    max_val         = max(v for _, v in items) if items else 1
+    height           = n * ROW_H + PAD_T + PAD_B
+    bar_area         = max(10, width - label_w - PAD_R)
+    max_val          = max(v for _, v in items) if items else 1
     if max_val == 0:
         max_val = 1
 
     def _c(i: int) -> str:
+        # Gray gradient: dark → light
         t   = i / max(n - 1, 1)
-        r   = int(0xFF + (0xFF - 0xFF) * t)
-        g   = int(0xB0 + (0xDE - 0xB0) * t)
-        b   = int(0x20 + (0x7F - 0x20) * t)
-        return f'#{r:02X}{g:02X}{b:02X}'
+        val = int(0x33 + (0xAA - 0x33) * t)
+        return f'#{val:02X}{val:02X}{val:02X}'
 
     elems: list[str] = []
     for i, (label, val) in enumerate(items):
@@ -133,23 +129,20 @@ def hbar(
 
         elems.append(
             f'<text x="{label_w - 6}" y="{cy:.1f}" text-anchor="end"'
-            f' font-size="12" fill="#475569">{short}</text>'
+            f' font-size="12" fill="#555555">{short}</text>'
         )
-        # BG
         elems.append(
             f'<rect x="{label_w}" y="{y + 6}" width="{bar_area}" height="{ROW_H - 12}"'
             f' fill="{bg_color}" rx="4"/>'
         )
-        # Value bar
         if bw > 0:
             elems.append(
                 f'<rect x="{label_w}" y="{y + 6}" width="{bw:.1f}" height="{ROW_H - 12}"'
                 f' fill="{_c(i)}" rx="4"/>'
             )
-        # Value label
         elems.append(
             f'<text x="{label_w + bw + 5:.1f}" y="{cy:.1f}"'
-            f' font-size="11" fill="#94A3B8">{val}</text>'
+            f' font-size="11" fill="#888888">{val}</text>'
         )
 
     return _svg(width, height, elems)
@@ -159,8 +152,8 @@ def line(
     items: list[tuple],
     width: int = 580,
     height: int = 130,
-    color: str = '#22C55E',
-    fill_opacity: float = 0.12,
+    color: str = '#333333',
+    fill_opacity: float = 0.08,
 ) -> str:
     """
     라인 차트 — 일별 게시글 수 추이.
@@ -192,20 +185,18 @@ def line(
 
     elems: list[str] = []
 
-    # Y gridlines
     for pct in [0.0, 0.5, 1.0]:
         gy = PAD_T + ch * (1 - pct)
         gv = int(min_v + rng * pct)
         elems.append(
             f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{width - PAD_R}" y2="{gy:.1f}"'
-            f' stroke="#F1F5F9" stroke-width="1"/>'
+            f' stroke="#F0F0F0" stroke-width="1"/>'
         )
         elems.append(
             f'<text x="{PAD_L - 3}" y="{gy + 4:.1f}" text-anchor="end"'
-            f' font-size="10" fill="#94A3B8">{gv}</text>'
+            f' font-size="10" fill="#888888">{gv}</text>'
         )
 
-    # Fill polygon
     fill_pts = (
         f'{PAD_L:.1f},{PAD_T + ch:.1f} '
         + ' '.join(f'{x:.1f},{y:.1f}' for x, y in pts)
@@ -215,14 +206,12 @@ def line(
         f'<polygon points="{fill_pts}" fill="{color}" opacity="{fill_opacity}"/>'
     )
 
-    # Line
     path_d = 'M ' + ' L '.join(f'{x:.1f},{y:.1f}' for x, y in pts)
     elems.append(
         f'<path d="{path_d}" fill="none" stroke="{color}" stroke-width="2.5"'
         f' stroke-linejoin="round" stroke-linecap="round"/>'
     )
 
-    # Dots for small datasets
     if n <= 35:
         for x, y in pts:
             elems.append(
@@ -230,7 +219,6 @@ def line(
                 f' fill="{color}" stroke="white" stroke-width="2"/>'
             )
 
-    # X-axis labels (~5 points)
     step = max(1, n // 5)
     for i in range(0, n, step):
         lbl, _ = items[i]
@@ -238,26 +226,26 @@ def line(
         short  = lbl[5:10] if len(lbl) >= 10 else lbl
         elems.append(
             f'<text x="{x:.1f}" y="{height - 5}" text-anchor="middle"'
-            f' font-size="10" fill="#94A3B8">{short}</text>'
+            f' font-size="10" fill="#888888">{short}</text>'
         )
 
     return _svg(width, height, elems)
 
 
 def multiline(
-    series: list[dict],   # [{'name': str, 'items': [(date, count)], 'color': str}]
+    series: list[dict],
     width: int = 700,
     height: int = 220,
 ) -> str:
     """
     복수 갤러리 라인 차트.
+    series: [{'name': str, 'items': [(date, count)], 'color': str}]
     """
     if not series:
         return _empty(width, 40)
 
     PAD_L, PAD_R, PAD_T, PAD_B = 40, 16, 14, 26
 
-    # Compute global date axis and value range
     all_dates = sorted({d for s in series for d, _ in s.get('items', [])})
     n = len(all_dates)
     if n < 2:
@@ -280,29 +268,26 @@ def multiline(
 
     elems: list[str] = []
 
-    # Y gridlines
     for pct in [0.0, 0.25, 0.5, 0.75, 1.0]:
         gy = PAD_T + ch * (1 - pct)
         gv = int(min_v + rng * pct)
         elems.append(
             f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{width - PAD_R}" y2="{gy:.1f}"'
-            f' stroke="#F1F5F9" stroke-width="1"/>'
+            f' stroke="#F0F0F0" stroke-width="1"/>'
         )
         if pct in [0, 0.5, 1.0]:
             elems.append(
                 f'<text x="{PAD_L - 3}" y="{gy + 4:.1f}" text-anchor="end"'
-                f' font-size="10" fill="#94A3B8">{gv}</text>'
+                f' font-size="10" fill="#888888">{gv}</text>'
             )
 
-    # Series lines
     for s in series:
         items = [(d, v) for d, v in s.get('items', []) if d in date_idx]
         if not items:
             continue
-        color = s.get('color', '#FFB020')
+        color = s.get('color', '#333333')
         pts = [_pt(d, v) for d, v in items]
 
-        # Fill
         if len(pts) >= 2:
             fill_pts = (
                 f'{pts[0][0]:.1f},{PAD_T + ch:.1f} '
@@ -310,7 +295,7 @@ def multiline(
                 + f' {pts[-1][0]:.1f},{PAD_T + ch:.1f}'
             )
             elems.append(
-                f'<polygon points="{fill_pts}" fill="{color}" opacity="0.07"/>'
+                f'<polygon points="{fill_pts}" fill="{color}" opacity="0.06"/>'
             )
 
         path_d = 'M ' + ' L '.join(f'{x:.1f},{y:.1f}' for x, y in pts)
@@ -319,7 +304,6 @@ def multiline(
             f' stroke-linejoin="round" stroke-linecap="round"/>'
         )
 
-    # X-axis labels
     step = max(1, n // 6)
     for i in range(0, n, step):
         d = all_dates[i]
@@ -327,7 +311,7 @@ def multiline(
         short = d[5:10] if len(d) >= 10 else d
         elems.append(
             f'<text x="{x:.1f}" y="{height - 5}" text-anchor="middle"'
-            f' font-size="10" fill="#94A3B8">{short}</text>'
+            f' font-size="10" fill="#888888">{short}</text>'
         )
 
     return _svg(width, height, elems)
@@ -349,7 +333,7 @@ def _empty(w, h, msg='데이터 없음'):
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
         f'style="width:100%;display:block;">'
         f'<text x="50%" y="{h // 2 + 4}" text-anchor="middle"'
-        f' font-size="12" fill="#94A3B8">{msg}</text>'
+        f' font-size="12" fill="#888888">{msg}</text>'
         f'</svg>'
     )
 
@@ -357,8 +341,8 @@ def _empty(w, h, msg='데이터 없음'):
 def wrap(svg: str, title: str = '') -> str:
     """SVG를 lc 카드로 감쌉니다."""
     hdr = (
-        f'<div style="font-size:0.82rem;font-weight:700;color:#0F172A;'
-        f'margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #FFB020;'
+        f'<div style="font-size:0.82rem;font-weight:700;color:#0A0A0A;'
+        f'margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #0A0A0A;'
         f'display:inline-block;">{title}</div>'
     ) if title else ''
     return f'<div class="lc" style="padding:14px 16px;">{hdr}{svg}</div>'
