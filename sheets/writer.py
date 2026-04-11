@@ -53,23 +53,29 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
 
 
 def ensure_sheet_headers():
-    """필요한 시트 탭과 헤더를 자동 생성합니다."""
+    """필요한 시트 탭과 헤더를 자동 생성합니다. 기존 시트의 누락 컬럼도 추가합니다."""
     sh = _get_spreadsheet()
     existing = [ws.title for ws in sh.worksheets()]
 
     for sheet_name, headers in SHEET_HEADERS.items():
         if sheet_name not in existing:
             ws = sh.add_worksheet(title=sheet_name, rows=5000, cols=len(headers))
+            ws.append_row(headers)
             print(f"  시트 생성: '{sheet_name}'")
         else:
             ws = sh.worksheet(sheet_name)
-
-        first_row = ws.row_values(1)
-        if not first_row:
-            ws.append_row(headers)
-            print(f"  헤더 추가: '{sheet_name}'")
-        else:
-            print(f"  이미 존재: '{sheet_name}'")
+            first_row = ws.row_values(1)
+            if not first_row:
+                ws.append_row(headers)
+                print(f"  헤더 추가: '{sheet_name}'")
+            else:
+                missing = [h for h in headers if h not in first_row]
+                if missing:
+                    new_row = first_row + missing
+                    ws.update(range_name='A1', values=[new_row])
+                    print(f"  컬럼 추가: '{sheet_name}' -> {missing}")
+                else:
+                    print(f"  이미 존재: '{sheet_name}'")
 
 
 def save_analysis_result(result: dict):

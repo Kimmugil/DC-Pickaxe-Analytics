@@ -29,6 +29,31 @@ def get_gallery_list() -> list[dict]:
     return sh.get_worksheet(0).get_all_records()
 
 
+def get_gallery_stats(sheet_url: str) -> dict[str, int]:
+    """
+    갤러리 시트의 stats 탭에서 날짜별 게시글 수를 반환합니다.
+    Returns: {'YYYY-MM-DD': count, ...}
+    """
+    gc = _get_client()
+    sh = gc.open_by_url(sheet_url)
+    try:
+        ws = sh.worksheet('stats')
+    except Exception:
+        return {}
+    rows = ws.get_all_values()
+    if len(rows) < 2:
+        return {}
+    result: dict[str, int] = {}
+    for row in rows[1:]:
+        if len(row) >= 2 and row[0]:
+            date_str = str(row[0]).strip()
+            try:
+                result[date_str] = int(row[1])
+            except (ValueError, TypeError):
+                result[date_str] = 0
+    return result
+
+
 def get_gallery_posts(sheet_url: str) -> pd.DataFrame:
     gc = _get_client()
     sh = gc.open_by_url(sheet_url)
@@ -90,6 +115,32 @@ def get_posts_by_run_id(run_id: str) -> pd.DataFrame:
     if df.empty:
         return df
     return df[df['run_id'] == run_id].reset_index(drop=True)
+
+
+def get_latest_overall_stats() -> dict:
+    """
+    가장 최근 분석 run의 전체 갤러리 합산 통계를 반환합니다.
+    Returns: {new_posts_today, new_posts_7d, total_posts, date, run_id}
+    """
+    df = _analytics_sheet('분析결과')
+    if df.empty:
+        return {}
+    # 가장 최신 날짜의 가장 최신 run_id
+    latest_date = df['date'].max()
+    date_df = df[df['date'] == latest_date]
+    if 'run_id' in date_df.columns:
+        latest_run = date_df['run_id'].iloc[-1]
+        date_df = date_df[date_df['run_id'] == latest_run]
+    for col in ['new_posts_today', 'new_posts_7d', 'total_posts']:
+        if col in date_df.columns:
+            date_df[col] = pd.to_numeric(date_df[col], errors='coerce').fillna(0)
+    return {
+        'date': latest_date,
+        'run_id': date_df['run_id'].iloc[0] if 'run_id' in date_df.columns else '',
+        'new_posts_today': int(date_df['new_posts_today'].sum()) if 'new_posts_today' in date_df.columns else 0,
+        'new_posts_7d':    int(date_df['new_posts_7d'].sum())    if 'new_posts_7d'    in date_df.columns else 0,
+        'total_posts':     int(date_df['total_posts'].sum())     if 'total_posts'     in date_df.columns else 0,
+    }
 
 
 def get_available_dates() -> list[str]:

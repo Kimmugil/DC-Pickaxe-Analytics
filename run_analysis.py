@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 load_dotenv()
 
-from sheets.reader import get_gallery_list, get_gallery_posts, get_posts_by_run_id
+from sheets.reader import get_gallery_list, get_gallery_posts, get_gallery_stats, get_posts_by_run_id
 from sheets.writer import (
     save_analysis_result,
     save_analysis_posts,
@@ -128,23 +128,46 @@ def analyze_one_gallery(
         )
 
     print(f"     통계 분석 중...")
-    src_df  = posts_df if rerun_posts_df is None else selected_df
+    src_df   = posts_df if rerun_posts_df is None else selected_df
     trends   = analyze_post_trends(src_df, date_str)
     activity = analyze_activity(src_df, date_str)
     keywords = extract_keywords(selected_df)
     top5     = get_top_posts(selected_df)
     signals  = analyze_gaming_signals(selected_df)
 
-    stats = {**trends, **activity}
+    # stats 시트에서 정확한 게시글 수 가져오기
+    new_posts_today = trends.get('new_posts_today', 0)
+    new_posts_7d    = trends.get('new_posts_7d', 0)
+    total_posts     = trends.get('total_posts', 0)
+    if sheet_url and rerun_posts_df is None:
+        try:
+            from datetime import timedelta as _td
+            stats_data = get_gallery_stats(sheet_url)
+            if stats_data:
+                new_posts_today = stats_data.get(date_str, new_posts_today)
+                date_dt = datetime.strptime(date_str, '%Y-%m-%d')
+                new_posts_7d = sum(
+                    stats_data.get(
+                        (date_dt - _td(days=i)).strftime('%Y-%m-%d'), 0
+                    )
+                    for i in range(7)
+                )
+                total_posts = sum(stats_data.values())
+        except Exception as e:
+            print(f"     stats 시트 로딩 실패 (기존 방식 사용): {e}")
+
+    stats = {**trends, **activity,
+             'new_posts_today': new_posts_today,
+             'new_posts_7d':    new_posts_7d}
 
     result = {
         'run_id':          run_id,
         'date':            date_str,
         'gallery_id':      gallery_id,
         'gallery_name':    gallery_name,
-        'total_posts':     trends.get('total_posts', 0),
-        'new_posts_today': trends.get('new_posts_today', 0),
-        'new_posts_7d':    trends.get('new_posts_7d', 0),
+        'total_posts':     total_posts,
+        'new_posts_today': new_posts_today,
+        'new_posts_7d':    new_posts_7d,
         'top5_posts':      top5,
         'top_keywords':    keywords,
         'hourly_dist':     activity.get('hourly_dist', {}),

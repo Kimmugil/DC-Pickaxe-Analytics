@@ -139,8 +139,10 @@ def summarize_weekly_overview(
 ) -> str:
     """
     전체 갤러리의 주간 종합 요약을 생성합니다.
-    주목할 게임 + 이번 주 관찰포인트 + 주요 게시글 링크 포함.
+    주목할 게임 + 관찰포인트(각 포인트별 관련 게시글 링크 포함) 구조.
     """
+    import json as _json
+
     active = [r for r in gallery_results if r.get('total_posts_week', 0) >= MIN_POSTS_FOR_AI]
     if not active:
         return "> 이번 주 분석 가능한 갤러리가 없습니다."
@@ -149,58 +151,69 @@ def summarize_weekly_overview(
     for r in active:
         name     = r['gallery_name']
         total    = r.get('total_posts_week', 0)
-        summary  = str(r.get('ai_gallery_weekly', ''))[:300]
+        summary  = str(r.get('ai_gallery_weekly', ''))[:200]
         keywords = r.get('top_keywords', [])
         if isinstance(keywords, str):
-            import json
             try:
-                keywords = json.loads(keywords)
+                keywords = _json.loads(keywords)
             except Exception:
                 keywords = []
         kw_text = ', '.join(kw for kw, _ in keywords[:5])
-        gallery_blocks.append(
-            f"**{name}** (주간 {total}건) | 키워드: {kw_text}\n{summary}"
-        )
 
-    # 링크가 있는 주요 게시글 추출
-    key_posts = []
-    for r in active:
+        # 갤러리별 top5 posts with links
         top5 = r.get('top5_posts', [])
         if isinstance(top5, str):
-            import json
             try:
-                top5 = json.loads(top5)
+                top5 = _json.loads(top5)
             except Exception:
                 top5 = []
-        for p in top5[:2]:
-            link = p.get('링크', '')
+        posts_lines = []
+        for p in top5[:3]:
+            link  = p.get('링크', '')
+            title = p.get('제목', '(제목없음)')
+            rec   = p.get('추천수', 0)
+            cmt   = p.get('댓글수', 0)
             if link:
-                key_posts.append(
-                    f"- [{p.get('제목','(제목없음)')}]({link}) [{r['gallery_name']}]"
-                )
+                posts_lines.append(f"  - [{title}]({link}) (추천{rec}/댓글{cmt})")
+            else:
+                posts_lines.append(f"  - {title} (추천{rec}/댓글{cmt})")
 
-    key_posts_text = '\n'.join(key_posts[:6]) if key_posts else '(링크 없음)'
-    combined = '\n\n---\n'.join(gallery_blocks)
+        posts_text = '\n'.join(posts_lines) if posts_lines else '  (게시글 없음)'
+        gallery_blocks.append(
+            f"### {name} (주간 {total}건)\n"
+            f"키워드: {kw_text}\n"
+            f"요약: {summary}\n"
+            f"주요 게시글:\n{posts_text}"
+        )
+
+    combined = '\n\n'.join(gallery_blocks)
 
     prompt = f"""당신은 한국 키우기 게임 커뮤니티 트렌드 분석 전문가입니다.
-{week_start}~{week_end} 한 주간 각 갤러리의 주요 내용입니다.
+{week_start}~{week_end} 한 주간 각 갤러리 데이터입니다.
 
 {combined}
 
-아래 형식으로 한국어 마크다운으로 작성하세요.
-- 모든 갤러리에 동등한 비중 부여 (게시글 수 기준 아님)
-- 항목 외 서론/결론 불필요
+아래 마크다운 형식으로 정확히 작성하세요.
+- 모든 갤러리에 동등한 비중 (게시글 수 기준 아님)
+- 링크는 반드시 마크다운 형식 [제목](URL) 으로 유지
+- 서론/결론 불필요, 형식 이외 추가 텍스트 금지
 
-## 🏆 주목할 게임
-(2~3문장: 이번 주 독특한 이슈·사건이 있었던 게임과 구체적 이유. 활동량 기준 아님)
+## 주목할 게임
+(2~3문장: 이번 주 독특한 이슈·사건이 있었던 게임과 이유)
 
-## 👀 이번 주 관찰포인트
-(bullet 2~3개: 여러 갤러리 공통 트렌드 또는 특정 갤러리의 주목할 단일 이슈)
+## 이번 주 관찰포인트
 
-## 📎 이번 주 주요 게시글
-{key_posts_text}
+### 1. (관찰포인트 제목)
+(1~2문장 설명)
+관련 게시글: (위 데이터에서 이 포인트와 관련된 게시글 링크를 [제목](URL) 형식으로 1~2개)
 
-총 분량: 250~400자"""
+### 2. (관찰포인트 제목)
+(1~2문장 설명)
+관련 게시글: (위 데이터에서 이 포인트와 관련된 게시글 링크를 [제목](URL) 형식으로 1~2개)
+
+### 3. (관찰포인트 제목) — 선택사항
+(1~2문장 설명)
+관련 게시글: (위 데이터에서 이 포인트와 관련된 게시글 링크를 [제목](URL) 형식으로 1~2개)"""
 
     return _generate(prompt)
 
