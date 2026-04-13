@@ -209,15 +209,8 @@ try:
         ws_date = latest_weekly.get('week_start', '')
         we_date = latest_weekly.get('week_end', '')
         txt     = str(latest_weekly.get('ai_weekly_summary', ''))
-        col_hdr, col_link = st.columns([5, 1])
-        with col_hdr:
-            st.subheader('최신 AI 주간 요약')
-            st.caption(f'분석 기간: **{ws_date} ~ {we_date}** · Gemini 2.5 Flash 생성')
-        with col_link:
-            if ws_date:
-                if st.button('전체 보기 →', key='btn_weekly_full'):
-                    st.session_state['report_week_start'] = ws_date
-                    st.switch_page('pages/_주간_리포트.py')
+        st.subheader('최신 AI 주간 요약')
+        st.caption(f'분석 기간: **{ws_date} ~ {we_date}** · Gemini 2.5 Flash 생성')
         if txt and not txt.startswith('>'):
             with st.container(border=True):
                 st.markdown(shrink_headings(txt))
@@ -237,17 +230,11 @@ try:
         latest_issue = issue_items[0]
         d_str = latest_issue['date']
         ic    = latest_issue['issue_count']
-        col_hdr2, col_link2 = st.columns([5, 1])
-        with col_hdr2:
-            st.subheader('최신 일간 이슈 요약')
-            st.caption(
-                f'기준일: **{d_str}** · 이슈 감지 갤러리: **{ic}개** · '
-                f'일간 리포트는 이슈 감지 시에만 발행됩니다.'
-            )
-        with col_link2:
-            if st.button('보기 →', key='btn_daily_full'):
-                st.session_state['report_date'] = d_str
-                st.switch_page('pages/_일간_리포트.py')
+        st.subheader('최신 일간 이슈 요약')
+        st.caption(
+            f'기준일: **{d_str}** · 이슈 감지 갤러리: **{ic}개** · '
+            f'일간 리포트는 이슈 감지 시에만 발행됩니다.'
+        )
         try:
             from sheets.reader import get_analysis_results
             df = get_analysis_results(date=d_str)

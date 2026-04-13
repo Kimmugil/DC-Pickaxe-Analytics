@@ -122,7 +122,7 @@ def get_latest_overall_stats() -> dict:
     가장 최근 분석 run의 전체 갤러리 합산 통계를 반환합니다.
     Returns: {new_posts_today, new_posts_7d, total_posts, date, run_id}
     """
-    df = _analytics_sheet('분析결과')
+    df = _analytics_sheet('분석결과')
     if df.empty:
         return {}
     # 가장 최신 날짜의 가장 최신 run_id
@@ -226,7 +226,7 @@ def get_daily_report_index() -> list[dict]:
     일간 리포트 인덱스: 날짜별 이슈 수 요약. 최신순.
     Returns: [{'date': str, 'issue_count': int, 'total_count': int, 'new_posts_today': int}, ...]
     """
-    df = _analytics_sheet('분析결과')
+    df = _analytics_sheet('분석결과')
     if df.empty:
         return []
     result = []

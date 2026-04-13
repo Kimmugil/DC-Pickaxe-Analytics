@@ -20,7 +20,7 @@ st.set_page_config(
 
 from dashboard.dash_styles import (
     inject_css, render_sidebar_nav,
-    gallery_color, kw_tag, ai_block_html,
+    gallery_color, kw_tag, ai_block_html, shrink_headings,
 )
 inject_css()
 render_sidebar_nav()
@@ -245,7 +245,7 @@ if not summary_df.empty:
     summary_text = str(latest_row.get('ai_weekly_summary', ''))
     if summary_text and not summary_text.startswith('>'):
         with st.container(border=True):
-            st.markdown(summary_text)
+            st.markdown(shrink_headings(summary_text))
     else:
         st.info('종합 요약이 없습니다.')
 else:
