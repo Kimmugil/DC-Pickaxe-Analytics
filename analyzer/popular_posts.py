@@ -1,6 +1,9 @@
 """
 인기글 선정 모듈
-- 추천수 × 2 + 댓글수 = engagement score 기준으로 TOP N 선정
+- engagement score 기준으로 TOP N 선정
+
+engagement_score = 추천수×2 + 댓글수×3 + 조회수×0.05
+  (주간 분석 weekly_analyzer.py 와 동일한 공식 사용 — 일관성 유지)
 """
 import pandas as pd
 from typing import List
@@ -10,7 +13,7 @@ def get_top_posts(df: pd.DataFrame, n: int = 5) -> List[dict]:
     """
     engagement score 기준 상위 n개 게시글을 반환합니다.
 
-    engagement_score = 추천수 × 2 + 댓글수
+    engagement_score = 추천수×2 + 댓글수×3 + 조회수×0.05
 
     Returns:
         [
@@ -25,7 +28,7 @@ def get_top_posts(df: pd.DataFrame, n: int = 5) -> List[dict]:
         return []
 
     df = df.copy()
-    df['score'] = df['추천수'] * 2 + df['댓글수']
+    df['score'] = df['추천수'] * 2 + df['댓글수'] * 3 + df['조회수'] * 0.05
     top = df.nlargest(n, 'score')
 
     result = []
