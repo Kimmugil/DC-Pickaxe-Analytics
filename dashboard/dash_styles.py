@@ -28,7 +28,6 @@ GALLERY_COLORS = [
 # CSS — 빈 줄(\\n\\n) 없이 단일 줄바꿈으로만 구성
 CSS = (
     "<style>"
-    "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');"
     "[data-testid='stAppViewContainer'] > .main {"
     "  background: #F8FAFC;"
     "  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;"
@@ -361,6 +360,13 @@ CSS = (
 
 def inject_css() -> None:
     import streamlit as st
+    # Google Fonts: <link> 방식이 동적 주입 환경에서 더 안정적
+    st.markdown(
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">',
+        unsafe_allow_html=True,
+    )
     st.markdown(CSS, unsafe_allow_html=True)
 
 

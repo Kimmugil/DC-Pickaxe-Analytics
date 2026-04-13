@@ -141,7 +141,7 @@ with st.sidebar:
     )
     st.divider()
     st.markdown(
-        '<div style="font-size:0.68rem;color:#334155;">DC-Pickaxe Analytics v5</div>',
+        '<div style="font-size:0.68rem;color:#334155;">DC-Pickaxe Analytics v5.1</div>',
         unsafe_allow_html=True,
     )
 
