@@ -221,6 +221,55 @@ def get_available_weekly_starts() -> list[str]:
 
 # ── Calendar ──────────────────────────────────────────────────────────
 
+def get_daily_report_index() -> list[dict]:
+    """
+    일간 리포트 인덱스: 날짜별 이슈 수 요약. 최신순.
+    Returns: [{'date': str, 'issue_count': int, 'total_count': int, 'new_posts_today': int}, ...]
+    """
+    df = _analytics_sheet('분析결과')
+    if df.empty:
+        return []
+    result = []
+    for d in sorted(df['date'].unique(), reverse=True):
+        ddf = df[df['date'] == d]
+        if 'run_id' in ddf.columns and not ddf.empty:
+            latest_run = ddf['run_id'].iloc[-1]
+            ddf = ddf[ddf['run_id'] == latest_run]
+        issue_count = 0
+        if 'has_issue' in ddf.columns:
+            issue_count = int((ddf['has_issue'].astype(str) == '1').sum())
+        total_count = len(ddf)
+        new_today = 0
+        if 'new_posts_today' in ddf.columns:
+            new_today = int(pd.to_numeric(ddf['new_posts_today'], errors='coerce').fillna(0).sum())
+        result.append({
+            'date': str(d),
+            'issue_count': issue_count,
+            'total_count': total_count,
+            'new_posts_today': new_today,
+        })
+    return result
+
+
+def get_weekly_report_index() -> list[dict]:
+    """
+    주간 리포트 인덱스: 주별 시작일/종료일 요약. 최신순.
+    Returns: [{'week_start': str, 'week_end': str}, ...]
+    """
+    df = _analytics_sheet('주간종합')
+    if df.empty:
+        return []
+    result = []
+    for ws in sorted(df['week_start'].unique(), reverse=True):
+        wdf = df[df['week_start'] == ws]
+        latest = wdf.iloc[-1]
+        result.append({
+            'week_start': str(ws),
+            'week_end': str(latest.get('week_end', '')),
+        })
+    return result
+
+
 def get_calendar_data() -> dict[str, str]:
     """
     캘린더 표시용 날짜 → 리포트 타입 매핑을 반환합니다.

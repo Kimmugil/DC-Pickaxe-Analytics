@@ -18,6 +18,57 @@ GALLERY_COLORS = [
     '#EC4899',  # pink
 ]
 
+# 타이포그래피 — [data-testid] attribute selector (Streamlit Cloud 대응)
+# p/li 가독성, 메트릭 자간, 캡션/탭 폰트 통합 개선
+TYPOGRAPHY_CSS = """
+<style>
+[data-testid="stMarkdownContainer"] p {
+    font-size: 0.91rem;
+    line-height: 1.78;
+    letter-spacing: -0.005em;
+    color: #1E293B;
+}
+[data-testid="stMarkdownContainer"] li {
+    font-size: 0.91rem;
+    line-height: 1.78;
+    letter-spacing: -0.005em;
+}
+[data-testid="stMarkdownContainer"] h1 { letter-spacing: -0.03em; line-height: 1.15; }
+[data-testid="stMarkdownContainer"] h2 { letter-spacing: -0.025em; line-height: 1.25; }
+[data-testid="stMarkdownContainer"] h3 { letter-spacing: -0.02em; line-height: 1.3; }
+[data-testid="stMarkdownContainer"] table { font-size: 0.86rem; }
+[data-testid="stMarkdownContainer"] code { font-size: 0.82rem; }
+[data-testid="stMetricLabel"] > div {
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    color: #64748B;
+    text-transform: uppercase;
+}
+[data-testid="stMetricValue"] > div {
+    font-size: 1.65rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+}
+[data-testid="stMetricDelta"] > div { font-size: 0.78rem; }
+button[role="tab"] {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+}
+[data-testid="stCaptionContainer"] p {
+    font-size: 0.83rem;
+    line-height: 1.65;
+    letter-spacing: 0;
+    color: #64748B;
+}
+[data-testid="stAlert"] p { font-size: 0.88rem; line-height: 1.65; }
+[data-testid="stExpander"] summary p { font-size: 0.85rem; font-weight: 600; }
+[data-testid="stPageLink"] a { font-size: 0.82rem !important; }
+</style>
+"""
+
 # 사이드바 다크 테마 CSS — Streamlit 프레임워크 attribute selector 만 사용
 SIDEBAR_CSS = """
 <style>
@@ -52,6 +103,7 @@ SIDEBAR_CSS = """
 def inject_css() -> None:
     import streamlit as st
     st.markdown(SIDEBAR_CSS, unsafe_allow_html=True)
+    st.markdown(TYPOGRAPHY_CSS, unsafe_allow_html=True)
 
 
 def gallery_color(index: int) -> str:

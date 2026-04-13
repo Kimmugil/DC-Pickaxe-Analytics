@@ -1,11 +1,9 @@
 """
-DC-Pickaxe Analytics — 주간 분석 리포트 v8
-개선사항:
-  - 갤러리 색상: 단조 회색 → 8색 비비드 팔레트
-  - KPI 구조 교정: '가장 활발한 갤러리' metric 올바른 형식으로
-  - 갤러리 정렬: 게시글 수 내림차순 + 순위 표시
-  - 주간 추이 멀티라인 차트 추가
-  - AI 요약: amber 좌측 보더 블록
+DC-Pickaxe Analytics — 주간 분석 리포트 v9
+IA 개편:
+  - 브레드크럼: 홈 › 리포트 목록 › 주 시작일
+  - 이전/다음 주 이동 버튼 (prev/next week nav)
+  - 사이드바 '← 캘린더로' 제거 (브레드크럼으로 대체)
 탭 구조: [📊 주간 리포트] [🔍 분석 방법론]
 """
 import sys
@@ -36,14 +34,14 @@ week_start = st.session_state.get('report_week_start', '')
 if not week_start:
     week_start = st.query_params.get('week_start', '')
 
-if not week_start:
-    st.warning('주 시작일이 지정되지 않았습니다. 메인 캘린더에서 날짜를 선택해주세요.')
-    if st.button('← 메인으로'):
-        st.switch_page('app.py')
-    st.stop()
-
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def load_all_weekly_starts() -> list[str]:
+    from sheets.reader import get_available_weekly_starts
+    return sorted(get_available_weekly_starts())  # ascending
+
+
 @st.cache_data(ttl=60)
 def load_weekly_data(ws: str, run_id: str = None):
     from sheets.reader import get_weekly_gallery_results, get_weekly_summary
@@ -52,33 +50,27 @@ def load_weekly_data(ws: str, run_id: str = None):
     return gallery_df, summary_df
 
 
+# ── Prev / Next 주 계산 ───────────────────────────────────────────────
+try:
+    all_weeks = load_all_weekly_starts()
+    if week_start in all_weeks:
+        idx     = all_weeks.index(week_start)
+        prev_w  = all_weeks[idx - 1] if idx > 0 else None
+        next_w  = all_weeks[idx + 1] if idx < len(all_weeks) - 1 else None
+    else:
+        prev_w = next_w = None
+except Exception:
+    prev_w = next_w = None
+
+
 # ── 사이드바 ─────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown('**⛏️ DC-Pickaxe**')
     st.divider()
-    if st.button('← 캘린더로', use_container_width=True):
-        st.switch_page('app.py')
-    st.divider()
 
     try:
-        from sheets.reader import get_available_weekly_starts, get_weekly_run_ids
-        weekly_starts = get_available_weekly_starts()
-        if weekly_starts and len(weekly_starts) > 1:
-            sel_ws = st.selectbox(
-                '주 선택',
-                options=weekly_starts,
-                index=weekly_starts.index(week_start) if week_start in weekly_starts else 0,
-                key='sel_week_start',
-            )
-            if sel_ws != week_start:
-                st.session_state['report_week_start'] = sel_ws
-                st.session_state.pop('report_weekly_run_id', None)
-                st.rerun()
-    except Exception:
-        pass
-
-    try:
-        weekly_run_ids = get_weekly_run_ids(week_start)
+        from sheets.reader import get_weekly_run_ids
+        weekly_run_ids = get_weekly_run_ids(week_start) if week_start else []
     except Exception:
         weekly_run_ids = []
 
@@ -101,9 +93,10 @@ with st.sidebar:
         sel_rid = selected_run_id
 
     st.divider()
-    st.caption(f'주: {week_start}')
-    rerun_btn = st.button('현재 기준으로 다시 분석', use_container_width=True, key='btn_rerun_weekly')
-    if rerun_btn:
+    if week_start:
+        st.caption(f'분석 주: **{week_start}**')
+    rerun_btn = st.button('다시 분석', use_container_width=True, key='btn_rerun_weekly')
+    if rerun_btn and week_start:
         from dashboard.analysis_runner import run_weekly_now
         with st.spinner(f'{week_start} 재분석 중...'):
             success, output = run_weekly_now(week_start)
@@ -117,6 +110,57 @@ with st.sidebar:
                 st.code(output[:3000])
 
 
+# ── 브레드크럼 ───────────────────────────────────────────────────────
+bc1, bc2, bc3, bc4, bc5 = st.columns([0.7, 0.15, 1.2, 0.15, 5])
+with bc1:
+    st.page_link('app.py', label='🏠 홈')
+with bc2:
+    st.caption('›')
+with bc3:
+    st.page_link('pages/1_리포트_목록.py', label='리포트 목록')
+with bc4:
+    st.caption('›')
+with bc5:
+    st.caption(f'**{week_start}** 주간 분석 리포트' if week_start else '주간 분석 리포트')
+
+
+# ── 날짜 미지정 처리 ─────────────────────────────────────────────────
+if not week_start:
+    st.warning('주 시작일이 지정되지 않았습니다.')
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button('← 홈으로', use_container_width=True):
+            st.switch_page('app.py')
+    with col_b:
+        if st.button('리포트 목록', use_container_width=True):
+            st.switch_page('pages/1_리포트_목록.py')
+    st.stop()
+
+
+# ── 이전/다음 주 내비게이션 ──────────────────────────────────────────
+nav_p, nav_c, nav_n = st.columns([2, 4, 2])
+with nav_p:
+    if prev_w:
+        if st.button(f'← {prev_w}', use_container_width=True, key='nav_prev_week'):
+            st.session_state['report_week_start'] = prev_w
+            st.session_state.pop('report_weekly_run_id', None)
+            st.rerun()
+with nav_c:
+    st.markdown(
+        f'<div style="text-align:center;font-size:0.82rem;color:#94A3B8;padding-top:6px;">'
+        f'{week_start} 주</div>',
+        unsafe_allow_html=True,
+    )
+with nav_n:
+    if next_w:
+        if st.button(f'{next_w} →', use_container_width=True, key='nav_next_week'):
+            st.session_state['report_week_start'] = next_w
+            st.session_state.pop('report_weekly_run_id', None)
+            st.rerun()
+
+st.markdown('<div style="height:2px;"></div>', unsafe_allow_html=True)
+
+
 # ── 데이터 로드 ──────────────────────────────────────────────────────
 try:
     gallery_df, summary_df = load_weekly_data(week_start, sel_rid)
@@ -126,6 +170,8 @@ except Exception as e:
 
 if gallery_df.empty:
     st.warning(f'**{week_start}** 주간 분석 결과가 없습니다.')
+    if st.button('← 리포트 목록으로'):
+        st.switch_page('pages/1_리포트_목록.py')
     st.stop()
 
 # 게시글 수 내림차순 정렬
@@ -153,7 +199,7 @@ st.caption(
 tab_report, tab_method = st.tabs(['📊 주간 리포트', '🔍 분석 방법론'])
 
 with tab_report:
-    # ── KPI — 구조 교정: 최다 갤러리는 게시글 수가 value ───────────
+    # ── KPI ───────────────────────────────────────────────────────────
     total_posts_week = sum(int(r.get('total_posts_week', 0)) for r in gallery_records)
     most_active      = gallery_records[0] if gallery_records else {}
     most_active_name = most_active.get('gallery_name', '-')
@@ -162,47 +208,31 @@ with tab_report:
 
     k1, k2, k3 = st.columns(3)
     with k1:
-        st.metric(
-            '주간 전체 게시글',
-            f'{total_posts_week:,}건',
-            help=f'{week_start} ~ {week_end} 전체 갤러리 합산',
-        )
+        st.metric('주간 전체 게시글', f'{total_posts_week:,}건',
+                  help=f'{week_start} ~ {week_end} 전체 합산')
     with k2:
-        # value = 게시글 수, caption = 갤러리명
-        st.metric(
-            '주간 최다 게시글',
-            f'{most_active_cnt:,}건',
-            help=f'가장 활발한 갤러리: {most_active_name}',
-        )
+        st.metric('주간 최다 게시글', f'{most_active_cnt:,}건',
+                  help=f'가장 활발: {most_active_name}')
         st.caption(f'· {most_active_name}')
     with k3:
-        st.metric(
-            '갤러리 평균',
-            f'{avg_posts:,}건',
-            help='주간 게시글 갤러리 평균',
-        )
+        st.metric('갤러리 평균', f'{avg_posts:,}건',
+                  help='주간 게시글 갤러리 평균')
 
     st.divider()
 
-    # ── 주간 활동 추이 멀티라인 차트 ─────────────────────────────────
+    # ── 주간 활동 추이 차트 ────────────────────────────────────────────
     try:
         from analyzer.weekly_analyzer import normalize_trends
         from dashboard.svg_charts import multiline, wrap
         trend_series = normalize_trends(gallery_records)
         if trend_series:
             ml_svg = multiline(trend_series, width=900, height=200)
-            st.markdown(
-                wrap(ml_svg, '갤러리별 주간 활동 추이 (정규화 · 각 갤러리 최대=100)'),
-                unsafe_allow_html=True,
-            )
-
-            # 범례 (inline style)
+            st.markdown(wrap(ml_svg, '갤러리별 주간 활동 추이 (정규화 · 최대=100)'), unsafe_allow_html=True)
             legend_items = ''.join(
                 f'<span style="display:inline-flex;align-items:center;gap:4px;'
                 f'margin-right:12px;font-size:0.78rem;color:#475569;">'
                 f'<span style="display:inline-block;width:12px;height:3px;'
-                f'background:{s["color"]};border-radius:2px;"></span>'
-                f'{s["name"]}</span>'
+                f'background:{s["color"]};border-radius:2px;"></span>{s["name"]}</span>'
                 for s in trend_series
             )
             st.markdown(
@@ -216,7 +246,7 @@ with tab_report:
 
     # ── AI 종합 요약 ──────────────────────────────────────────────────
     st.subheader('AI 주간 종합 요약')
-    st.caption(f'분석 기간: {week_start} ~ {week_end} · Gemini 2.5 Flash 생성')
+    st.caption(f'{week_start} ~ {week_end} · Gemini 2.5 Flash 생성')
 
     if not summary_df.empty:
         latest_row   = summary_df.iloc[-1]
@@ -231,9 +261,9 @@ with tab_report:
 
     st.divider()
 
-    # ── 갤러리별 상세 카드 (2열 · 게시글 수 내림차순) ─────────────────
+    # ── 갤러리별 카드 (2열 · 게시글 수 내림차순) ─────────────────────
     st.subheader('갤러리별 상세')
-    st.caption('게시글 수 내림차순 정렬 · TOP 5 선정: Engagement Score = 추천수×2 + 댓글수×3 + 조회수×0.05')
+    st.caption('게시글 수 내림차순 · TOP 5 기준: Engagement Score = 추천수×2 + 댓글수×3 + 조회수×0.05')
 
     pairs = [gallery_records[i:i+2] for i in range(0, len(gallery_records), 2)]
 
@@ -244,7 +274,6 @@ with tab_report:
                 name      = result.get('gallery_name', '')
                 total     = int(result.get('total_posts_week', 0))
                 ai_weekly = str(result.get('ai_gallery_weekly', ''))
-                # 정렬 후 인덱스 사용 (고정 색상 부여)
                 idx       = gallery_records.index(result)
                 color     = gallery_color(idx)
                 rank      = idx + 1
@@ -267,23 +296,20 @@ with tab_report:
                 else:
                     top5 = top5_raw or []
 
-                # 갤러리 색상 구분 바 (6px — 충분히 눈에 띔)
+                # 6px 갤러리 컬러 바
                 st.markdown(
-                    f'<div style="height:6px;background:{color};'
-                    f'border-radius:3px;margin-bottom:1px;"></div>',
+                    f'<div style="height:6px;background:{color};border-radius:3px;margin-bottom:1px;"></div>',
                     unsafe_allow_html=True,
                 )
 
                 with st.container(border=True):
-                    # 헤더: 순위 + 갤러리명 + 게시글 수
                     col_name, col_cnt = st.columns([3, 1])
                     with col_name:
                         rank_dot = (
                             f'<span style="display:inline-block;width:18px;height:18px;'
-                            f'background:{color};border-radius:50%;'
-                            f'text-align:center;line-height:18px;'
-                            f'font-size:0.65rem;font-weight:700;color:white;'
-                            f'margin-right:5px;">{rank}</span>'
+                            f'background:{color};border-radius:50%;text-align:center;'
+                            f'line-height:18px;font-size:0.65rem;font-weight:700;'
+                            f'color:white;margin-right:5px;">{rank}</span>'
                         )
                         st.markdown(
                             f'{rank_dot}<b style="font-size:0.92rem;">{name}</b>',
@@ -292,19 +318,13 @@ with tab_report:
                     with col_cnt:
                         st.metric('주간', f'{total:,}건')
 
-                    # 키워드 태그 (inline style)
                     if kw_list:
                         kw_html = ' '.join(kw_tag(kw, cnt) for kw, cnt in kw_list[:5])
                         st.markdown(kw_html, unsafe_allow_html=True)
 
-                    # AI 주간 요약 — amber 구분 블록
                     if ai_weekly and not ai_weekly.startswith('>'):
-                        st.markdown(
-                            ai_block_html(ai_weekly, 'AI 주간 요약'),
-                            unsafe_allow_html=True,
-                        )
+                        st.markdown(ai_block_html(ai_weekly, 'AI 주간 요약'), unsafe_allow_html=True)
 
-                    # TOP5
                     if top5:
                         with st.expander('TOP 5 인기 게시글'):
                             for rank_p, post in enumerate(top5[:5], 1):
