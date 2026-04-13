@@ -25,337 +25,78 @@ GALLERY_COLORS = [
     '#1E293B', '#475569', '#7C8FA3', '#B0BEC5',
 ]
 
-# CSS — 빈 줄(\\n\\n) 없이 단일 줄바꿈으로만 구성
-CSS = (
-    "<style>"
-    "[data-testid='stAppViewContainer'] > .main {"
-    "  background: #F8FAFC;"
-    "  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;"
-    "}"
-    "section.main .block-container {"
-    "  padding-top: 1rem;"
-    "  padding-bottom: 2.5rem;"
-    "}"
-    "/* ── Sidebar ── */"
-    "[data-testid='stSidebar'] {"
-    "  background: #0F172A !important;"
-    "  border-right: 1px solid #1E293B;"
-    "}"
-    "[data-testid='stSidebar'] * { color: #CBD5E1 !important; }"
-    "[data-testid='stSidebar'] h1,"
-    "[data-testid='stSidebar'] h2,"
-    "[data-testid='stSidebar'] h3,"
-    "[data-testid='stSidebar'] strong { color: #F1F5F9 !important; }"
-    "[data-testid='stSidebar'] hr { border-color: #1E293B !important; opacity: 1; }"
-    "[data-testid='stSidebar'] [data-testid='stSelectbox'] > div > div {"
-    "  background: #1E293B !important;"
-    "  border-color: #334155 !important;"
-    "}"
-    "[data-testid='stSidebar'] button {"
-    "  background: #1E293B !important;"
-    "  color: #CBD5E1 !important;"
-    "  border: 1px solid #334155 !important;"
-    "  border-radius: 10px !important;"
-    "  transition: all 200ms ease;"
-    "}"
-    "[data-testid='stSidebar'] button:hover {"
-    "  background: #334155 !important;"
-    "  border-color: #E8A020 !important;"
-    "}"
-    "/* ── Bento card (범용) ── */"
-    ".bento-card {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 20px 24px;"
-    "  margin-bottom: 16px;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.04);"
-    "  transition: box-shadow 200ms ease;"
-    "}"
-    ".bento-card:hover {"
-    "  box-shadow: 0 4px 16px rgba(15,23,42,.10);"
-    "}"
-    "/* ── KPI card ── */"
-    ".kpi-card {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 20px 22px;"
-    "  margin-bottom: 8px;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".kpi-val {"
-    "  font-size: 1.85rem;"
-    "  font-weight: 800;"
-    "  color: #0F172A;"
-    "  line-height: 1.1;"
-    "  font-family: 'Inter', sans-serif;"
-    "}"
-    ".kpi-lbl {"
-    "  font-size: 0.8rem;"
-    "  font-weight: 600;"
-    "  color: #475569;"
-    "  margin-top: 6px;"
-    "  display: flex;"
-    "  align-items: center;"
-    "  gap: 4px;"
-    "}"
-    ".kpi-sub {"
-    "  font-size: 0.73rem;"
-    "  color: #94A3B8;"
-    "  margin-top: 3px;"
-    "}"
-    "/* ── Issue card (이슈 심각도별) ── */"
-    ".issue-card {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 20px 24px;"
-    "  margin-bottom: 16px;"
-    "  border-left: 4px solid #E8A020;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".issue-card.sev-high { border-left-color: #DC2626; }"
-    ".issue-card.sev-mid  { border-left-color: #E8A020; }"
-    ".issue-card.sev-low  { border-left-color: #64748B; }"
-    "/* ── Score badge ── */"
-    ".score-badge {"
-    "  display: inline-flex;"
-    "  align-items: center;"
-    "  padding: 3px 10px;"
-    "  border-radius: 20px;"
-    "  font-size: 0.78rem;"
-    "  font-weight: 700;"
-    "}"
-    ".sev-high-badge { background: #FEF2F2; color: #DC2626; }"
-    ".sev-mid-badge  { background: #FEF3C7; color: #B45309; }"
-    ".sev-low-badge  { background: #F1F5F9; color: #475569; }"
-    "/* ── Gallery card (주간) ── */"
-    ".gallery-card {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 18px 20px;"
-    "  margin-bottom: 16px;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    "/* ── Section header ── */"
-    ".sec-hdr {"
-    "  font-size: 0.88rem;"
-    "  font-weight: 700;"
-    "  color: #0F172A;"
-    "  padding-bottom: 8px;"
-    "  margin-bottom: 14px;"
-    "  border-bottom: 2px solid #E8A020;"
-    "  display: inline-block;"
-    "}"
-    "/* ── Weekly summary card ── */"
-    ".summary-card {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 22px 26px;"
-    "  margin-bottom: 16px;"
-    "  border-left: 5px solid #E8A020;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    "/* ── Top post item ── */"
-    ".top-post {"
-    "  display: flex;"
-    "  align-items: flex-start;"
-    "  gap: 12px;"
-    "  padding: 10px 14px;"
-    "  margin-bottom: 6px;"
-    "  background: #F8FAFC;"
-    "  border-radius: 10px;"
-    "  border-left: 3px solid #E2E8F0;"
-    "  transition: background 150ms ease;"
-    "}"
-    ".top-post:hover { background: #F1F5F9; }"
-    ".top-post-rank  { font-size: 1rem; font-weight: 800; color: #E8A020; min-width: 20px; }"
-    ".top-post-title { font-size: 0.875rem; font-weight: 600; color: #0F172A; line-height: 1.45; }"
-    ".top-post-meta  { font-size: 0.75rem; color: #64748B; margin-top: 3px; }"
-    "/* ── Keyword tag ── */"
-    ".kw-tag {"
-    "  display: inline-block;"
-    "  margin: 2px 3px;"
-    "  padding: 3px 10px;"
-    "  border-radius: 20px;"
-    "  font-size: 0.8rem;"
-    "  font-weight: 500;"
-    "  background: #F1F5F9;"
-    "  color: #334155;"
-    "  border: 1px solid #E2E8F0;"
-    "}"
-    "/* ── Calendar ── */"
-    ".cal-wrap {"
-    "  background: #FFFFFF;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 16px;"
-    "  padding: 16px 18px;"
-    "  margin-bottom: 14px;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".cal-title { font-size: 0.9rem; font-weight: 700; color: #0F172A; margin-bottom: 10px; }"
-    ".cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }"
-    ".cal-dow {"
-    "  text-align: center;"
-    "  font-size: 0.7rem;"
-    "  font-weight: 700;"
-    "  color: #94A3B8;"
-    "  padding: 4px 0;"
-    "}"
-    ".cal-cell {"
-    "  aspect-ratio: 1;"
-    "  display: flex;"
-    "  flex-direction: column;"
-    "  align-items: center;"
-    "  justify-content: center;"
-    "  border-radius: 8px;"
-    "  font-size: 0.82rem;"
-    "  color: #475569;"
-    "  min-height: 34px;"
-    "}"
-    ".cal-cell.empty { background: transparent; }"
-    ".cal-cell.has-report { background: #FEF3C7; }"
-    ".cal-cell.has-report:hover { background: #FDE68A; }"
-    ".cal-cell.has-report a {"
-    "  text-decoration: none;"
-    "  color: #0F172A;"
-    "  font-weight: 700;"
-    "  display: flex;"
-    "  flex-direction: column;"
-    "  align-items: center;"
-    "  justify-content: center;"
-    "  width: 100%;"
-    "  height: 100%;"
-    "}"
-    ".cal-badge {"
-    "  font-size: 0.58rem;"
-    "  font-weight: 700;"
-    "  padding: 1px 4px;"
-    "  border-radius: 4px;"
-    "  margin-top: 2px;"
-    "  line-height: 1.4;"
-    "}"
-    ".cal-badge-d { background: #475569; color: white; }"
-    ".cal-badge-w { background: #E8A020; color: white; }"
-    ".cal-badge-b { background: #E8A020; color: white; }"
-    ".cal-today { outline: 2px solid #E8A020; outline-offset: -2px; border-radius: 8px; }"
-    "/* ── Methodology box ── */"
-    ".method-box {"
-    "  background: #F8FAFC;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 12px;"
-    "  padding: 16px 20px;"
-    "}"
-    ".method-section-title {"
-    "  font-size: 0.82rem;"
-    "  font-weight: 700;"
-    "  color: #1E293B;"
-    "  margin-bottom: 10px;"
-    "  padding-bottom: 6px;"
-    "  border-bottom: 1px solid #E2E8F0;"
-    "}"
-    ".method-row {"
-    "  display: flex;"
-    "  gap: 8px;"
-    "  font-size: 0.78rem;"
-    "  color: #475569;"
-    "  margin-bottom: 6px;"
-    "  line-height: 1.6;"
-    "}"
-    ".method-key {"
-    "  font-weight: 600;"
-    "  color: #1E293B;"
-    "  min-width: 130px;"
-    "  flex-shrink: 0;"
-    "}"
-    ".method-val { color: #475569; }"
-    "/* ── Alert banner ── */"
-    ".alert-banner {"
-    "  border-radius: 12px;"
-    "  padding: 12px 16px;"
-    "  margin-bottom: 14px;"
-    "  display: flex;"
-    "  align-items: center;"
-    "  gap: 10px;"
-    "  font-size: 0.85rem;"
-    "  font-weight: 600;"
-    "}"
-    ".alert-issue   { background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; }"
-    ".alert-clear   { background: #F0FDF4; border: 1px solid #86EFAC; color: #166534; }"
-    "/* ── Status bar ── */"
-    ".status-bar {"
-    "  background: #F1F5F9;"
-    "  border: 1px solid #E2E8F0;"
-    "  border-radius: 10px;"
-    "  padding: 8px 14px;"
-    "  font-size: 0.78rem;"
-    "  color: #475569;"
-    "  display: flex;"
-    "  gap: 16px;"
-    "  margin-bottom: 16px;"
-    "}"
-    ".status-bar b { color: #1E293B; }"
-    "/* ── Tooltip ── */"
-    ".tip-wrap { position: relative; display: inline-flex; align-items: center; cursor: help; }"
-    ".tip-icon {"
-    "  width: 14px; height: 14px; background: #94A3B8; color: white;"
-    "  border-radius: 50%; font-size: 9px; font-weight: 700;"
-    "  display: inline-flex; align-items: center; justify-content: center;"
-    "  margin-left: 3px; flex-shrink: 0;"
-    "}"
-    ".tip-box {"
-    "  visibility: hidden; opacity: 0;"
-    "  background: #0F172A; color: #F1F5F9;"
-    "  font-size: 0.72rem; line-height: 1.55;"
-    "  padding: 8px 11px; border-radius: 10px;"
-    "  position: absolute; bottom: 130%; left: 50%;"
-    "  transform: translateX(-50%);"
-    "  width: max-content; max-width: 240px;"
-    "  pointer-events: none;"
-    "  transition: opacity .15s ease;"
-    "  z-index: 9999; white-space: pre-line;"
-    "}"
-    ".tip-box::after {"
-    "  content: ''; position: absolute; top: 100%; left: 50%;"
-    "  transform: translateX(-50%);"
-    "  border: 5px solid transparent; border-top-color: #0F172A;"
-    "}"
-    ".tip-wrap:hover .tip-box { visibility: visible; opacity: 1; }"
-    "/* ── Legacy compatibility ── */"
-    ".lc {"
-    "  background: #FFFFFF; border: 1px solid #E2E8F0;"
-    "  border-radius: 16px; padding: 18px 22px; margin-bottom: 14px;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".sc {"
-    "  border-radius: 16px; padding: 16px 18px; margin-bottom: 8px;"
-    "  background: #FFFFFF; border: 1px solid #E2E8F0;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".sc-val { font-size: 1.7rem; font-weight: 800; color: #0F172A; line-height: 1.1; }"
-    ".sc-lbl { font-size: 0.78rem; color: #475569; margin-top: 5px; display: flex; align-items: center; gap: 4px; }"
-    ".sc-sub { font-size: 0.72rem; color: #94A3B8; margin-top: 2px; }"
-    ".issue-badge {"
-    "  display: inline-block; background: #0F172A; color: white;"
-    "  border-radius: 6px; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;"
-    "}"
-    ".weekly-card {"
-    "  background: #FFFFFF; border: 1px solid #E2E8F0;"
-    "  border-radius: 16px; padding: 20px 24px; margin-bottom: 14px;"
-    "  border-left: 4px solid #E8A020;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    ".hero-card {"
-    "  background: white; border: 1px solid #E2E8F0;"
-    "  border-radius: 16px; padding: 18px 24px; margin-bottom: 14px;"
-    "  border-left: 5px solid #E8A020;"
-    "  box-shadow: 0 1px 3px rgba(15,23,42,.05);"
-    "}"
-    "</style>"
-)
+# CSS — 빈 줄(\n\n) 없이 단일 줄바꿈만 사용
+CSS = """<style>
+[data-testid="stAppViewContainer"] > .main { background: #F8FAFC; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+section.main .block-container { padding-top: 1rem; padding-bottom: 2.5rem; }
+[data-testid="stSidebar"] { background: #0F172A !important; border-right: 1px solid #1E293B; }
+[data-testid="stSidebar"] * { color: #CBD5E1 !important; }
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] strong { color: #F1F5F9 !important; }
+[data-testid="stSidebar"] hr { border-color: #1E293B !important; opacity: 1; }
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div { background: #1E293B !important; border-color: #334155 !important; }
+[data-testid="stSidebar"] button { background: #1E293B !important; color: #CBD5E1 !important; border: 1px solid #334155 !important; border-radius: 10px !important; transition: all 200ms ease; }
+[data-testid="stSidebar"] button:hover { background: #334155 !important; border-color: #E8A020 !important; }
+.bento-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.04); transition: box-shadow 200ms ease; }
+.bento-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,.10); }
+.kpi-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px 22px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.kpi-val { font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1.1; }
+.kpi-lbl { font-size: 0.8rem; font-weight: 600; color: #475569; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+.kpi-sub { font-size: 0.73rem; color: #94A3B8; margin-top: 3px; }
+.issue-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; border-left: 4px solid #E8A020; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.issue-card.sev-high { border-left-color: #DC2626; }
+.issue-card.sev-mid  { border-left-color: #E8A020; }
+.issue-card.sev-low  { border-left-color: #64748B; }
+.score-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+.sev-high-badge { background: #FEF2F2; color: #DC2626; }
+.sev-mid-badge  { background: #FEF3C7; color: #B45309; }
+.sev-low-badge  { background: #F1F5F9; color: #475569; }
+.gallery-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.sec-hdr { font-size: 0.88rem; font-weight: 700; color: #0F172A; padding-bottom: 8px; margin-bottom: 14px; border-bottom: 2px solid #E8A020; display: inline-block; }
+.summary-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 22px 26px; margin-bottom: 16px; border-left: 5px solid #E8A020; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.top-post { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; margin-bottom: 6px; background: #F8FAFC; border-radius: 10px; border-left: 3px solid #E2E8F0; transition: background 150ms ease; }
+.top-post:hover { background: #F1F5F9; }
+.top-post-rank  { font-size: 1rem; font-weight: 800; color: #E8A020; min-width: 20px; }
+.top-post-title { font-size: 0.875rem; font-weight: 600; color: #0F172A; line-height: 1.45; }
+.top-post-meta  { font-size: 0.75rem; color: #64748B; margin-top: 3px; }
+.kw-tag { display: inline-block; margin: 2px 3px; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background: #F1F5F9; color: #334155; border: 1px solid #E2E8F0; }
+.cal-wrap { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.cal-title { font-size: 0.9rem; font-weight: 700; color: #0F172A; margin-bottom: 10px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 0.7rem; font-weight: 700; color: #94A3B8; padding: 4px 0; }
+.cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.82rem; color: #475569; min-height: 34px; }
+.cal-cell.empty { background: transparent; }
+.cal-cell.has-report { background: #FEF3C7; }
+.cal-cell.has-report:hover { background: #FDE68A; }
+.cal-cell.has-report a { text-decoration: none; color: #0F172A; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.cal-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 4px; border-radius: 4px; margin-top: 2px; line-height: 1.4; }
+.cal-badge-d { background: #475569; color: white; }
+.cal-badge-w { background: #E8A020; color: white; }
+.cal-badge-b { background: #E8A020; color: white; }
+.cal-today { outline: 2px solid #E8A020; outline-offset: -2px; border-radius: 8px; }
+.method-box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 20px; }
+.method-section-title { font-size: 0.82rem; font-weight: 700; color: #1E293B; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #E2E8F0; }
+.method-row { display: flex; gap: 8px; font-size: 0.78rem; color: #475569; margin-bottom: 6px; line-height: 1.6; }
+.method-key { font-weight: 600; color: #1E293B; min-width: 130px; flex-shrink: 0; }
+.method-val { color: #475569; }
+.alert-banner { border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; }
+.alert-issue { background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; }
+.alert-clear { background: #F0FDF4; border: 1px solid #86EFAC; color: #166534; }
+.status-bar { background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 10px; padding: 8px 14px; font-size: 0.78rem; color: #475569; display: flex; gap: 16px; margin-bottom: 16px; }
+.status-bar b { color: #1E293B; }
+.tip-wrap { position: relative; display: inline-flex; align-items: center; cursor: help; }
+.tip-icon { width: 14px; height: 14px; background: #94A3B8; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-left: 3px; flex-shrink: 0; }
+.tip-box { visibility: hidden; opacity: 0; background: #0F172A; color: #F1F5F9; font-size: 0.72rem; line-height: 1.55; padding: 8px 11px; border-radius: 10px; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 240px; pointer-events: none; transition: opacity .15s ease; z-index: 9999; white-space: pre-line; }
+.tip-box::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #0F172A; }
+.tip-wrap:hover .tip-box { visibility: visible; opacity: 1; }
+.lc { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.sc { border-radius: 16px; padding: 16px 18px; margin-bottom: 8px; background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.sc-val { font-size: 1.7rem; font-weight: 800; color: #0F172A; line-height: 1.1; }
+.sc-lbl { font-size: 0.78rem; color: #475569; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+.sc-sub { font-size: 0.72rem; color: #94A3B8; margin-top: 2px; }
+.issue-badge { display: inline-block; background: #0F172A; color: white; border-radius: 6px; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; }
+.weekly-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px 24px; margin-bottom: 14px; border-left: 4px solid #E8A020; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.hero-card { background: white; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px 24px; margin-bottom: 14px; border-left: 5px solid #E8A020; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+</style>"""
 
 
 def inject_css() -> None:
@@ -427,9 +168,8 @@ def cross_card(content_html: str) -> str:
     return f'<div class="weekly-card">{content_html}</div>'
 
 
-# ── Helper: issue severity class ─────────────────────────────────────
+# ── Helper: issue severity ───────────────────────────────────────────
 def issue_sev_class(score: int) -> str:
-    """이슈 점수 → CSS 심각도 클래스 반환"""
     if score >= 7:
         return 'sev-high'
     elif score >= 4:
@@ -479,7 +219,7 @@ def methodology_daily_html(date_str: str) -> str:
         + _mrow('Engagement Score', '추천수×2 + 댓글수×3 + 조회수×0.05 (TOP 5 선정 기준)')
         + _mrow('이슈 점수 산출', '게임신호 비율 5%↑: +1점, 10%↑: +3점 / 1위 게시글 댓글 15↑: +1점, 30↑: +2점 / 추천 7↑: +1점, 15↑: +2점 / 7일 일평균 대비 2배 초과: +2점')
         + _mrow('이슈 판정 기준', '총 이슈 점수 ≥ 3점 → 이슈 갤러리 판정')
-        + _mrow('이슈 심각도', '점수 3~3: 저(회색) / 4~6: 중(황색) / 7↑: 고(적색)')
+        + _mrow('이슈 심각도', '점수 3: 저(회색) / 4~6: 중(황색) / 7↑: 고(적색)')
         + _mrow('게임 신호 분석', '패치/업데이트 반응·공략 수요·컨텐츠 소진·과금 민심·버그·이벤트·밸런스·신규유입·엔드게임 등 9개 신호 키워드 패턴 매칭')
         + _mrow('키워드 추출', 'kiwipiepy 한국어 형태소 분석 (일반명사·고유명사·외래어, 2자 이상, 불용어 제외)')
         + _mrow('AI 요약 생성', 'Gemini 2.5 Flash — 이슈 판정 갤러리에 한해 생성 (비용 절감)')
