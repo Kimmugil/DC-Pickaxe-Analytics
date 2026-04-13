@@ -106,6 +106,34 @@ def inject_css() -> None:
     st.markdown(TYPOGRAPHY_CSS, unsafe_allow_html=True)
 
 
+def render_sidebar_nav() -> None:
+    """사이드바 공통 네비게이션 — 모든 페이지에서 호출."""
+    import streamlit as st
+    with st.sidebar:
+        st.markdown(
+            '<div style="font-size:1rem;font-weight:700;color:#F1F5F9;'
+            'padding:4px 0 2px;">⛏️ DC-Pickaxe</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption('키우기 갤러리 분석 대시보드')
+        st.divider()
+        st.page_link('app.py', label='🏠 홈', use_container_width=True)
+        st.page_link('pages/_리포트_목록.py', label='📋 리포트 목록', use_container_width=True)
+        st.divider()
+
+
+def shrink_headings(text: str) -> str:
+    """
+    AI 요약 텍스트의 마크다운 헤딩(#~###)을 한 단계 축소.
+    h1→h4, h2→h5, h3→h6  — 홈 화면에서 헤딩이 지나치게 크게 보이는 문제 해결.
+    """
+    import re
+    text = re.sub(r'^### (.+)$', r'###### \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^## (.+)$', r'##### \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^# (.+)$', r'#### \1', text, flags=re.MULTILINE)
+    return text
+
+
 def gallery_color(index: int) -> str:
     return GALLERY_COLORS[index % len(GALLERY_COLORS)]
 
