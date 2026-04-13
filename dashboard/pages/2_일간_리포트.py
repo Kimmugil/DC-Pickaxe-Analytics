@@ -1,6 +1,7 @@
 """
 DC-Pickaxe Analytics — 일간 이슈 리포트
-정보 흐름: 헤더/메타 → KPI → 이슈 알림 → 갤러리별 이슈 상세 → 이슈 없는 갤러리 → 분석 방법론
+정보 흐름: 헤더 → KPI → 이슈 알림 → 갤러리별 이슈(심각도 순) → 이슈 없는 갤러리 → 방법론
+모든 커스텀 HTML은 inline style 사용 (CSS 클래스 미적용 환경 대응)
 """
 import sys
 import os
@@ -20,8 +21,8 @@ st.set_page_config(
 
 from dashboard.dash_styles import (
     inject_css, sec_header, stat_card,
-    issue_sev_class, issue_badge_class, issue_sev_label,
-    methodology_daily_html,
+    issue_sev_color, issue_sev_badge_style, issue_sev_label,
+    kw_tag, top_post_item, methodology_daily_html,
 )
 inject_css()
 
@@ -62,7 +63,6 @@ with st.sidebar:
         st.switch_page('app.py')
     st.divider()
 
-    # 회차 선택
     run_ids, default_run = get_run_id_for_date(report_date)
     if len(run_ids) > 1:
         sel_run = st.selectbox(
@@ -86,7 +86,7 @@ with st.sidebar:
             success, output = run_analysis_now(report_date)
         if success:
             st.cache_data.clear()
-            st.success('재분석 완료!')
+            st.success('완료!')
             st.rerun()
         else:
             st.error('재분석 실패')
@@ -111,17 +111,19 @@ issue_records = sorted(
     key=lambda r: int(r.get('issue_score', 0)),
     reverse=True,
 )
-non_issue     = [r for r in records if str(r.get('has_issue', '0')) != '1']
-issue_cnt     = len(issue_records)
-total_cnt     = len(records)
+non_issue = [r for r in records if str(r.get('has_issue', '0')) != '1']
+issue_cnt = len(issue_records)
+total_cnt = len(records)
 
 
 # ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
-    '<div style="font-size:1.5rem;font-weight:800;color:#0F172A;line-height:1.2;margin-bottom:2px;">일간 이슈 리포트</div>'
-    f'<div style="font-size:0.85rem;color:#475569;margin-bottom:16px;">'
-    f'기준일: <b style="color:#0F172A">{report_date}</b>'
-    f'&nbsp;·&nbsp;이슈 갤러리: <b>{issue_cnt}</b> / 전체 {total_cnt}개'
+    '<div style="font-size:1.5rem;font-weight:800;color:#0F172A;line-height:1.2;margin-bottom:4px;">'
+    '일간 이슈 리포트</div>'
+    f'<div style="font-size:0.85rem;color:#64748B;margin-bottom:18px;">'
+    f'기준일: <b style="color:#1E293B">{report_date}</b>'
+    f'&nbsp;·&nbsp;분석 갤러리: <b style="color:#1E293B">{total_cnt}개</b>'
+    f'&nbsp;·&nbsp;이슈 감지: <b style="color:#1E293B">{issue_cnt}개</b>'
     f'{"&nbsp;·&nbsp;회차: " + sel_run if sel_run else ""}'
     f'</div>',
     unsafe_allow_html=True,
@@ -134,26 +136,20 @@ total_7d  = sum(int(r.get('new_posts_7d', 0)) for r in records)
 k1, k2, k3 = st.columns(3)
 with k1:
     st.markdown(
-        stat_card(
-            '24h 신규 게시글', f'{total_24h:,}건', sub='전체 갤러리 합산',
-            tooltip=f'{report_date} 00:00~23:59 기준 전체 갤러리 게시글 수',
-        ),
+        stat_card('24h 신규 게시글', f'{total_24h:,}건', sub='전체 갤러리 합산',
+                  tooltip=f'{report_date} 00:00~23:59 기준'),
         unsafe_allow_html=True,
     )
 with k2:
     st.markdown(
-        stat_card(
-            '7일 신규', f'{total_7d:,}건', sub='전체 갤러리 합산',
-            tooltip=f'{report_date} 기준 이전 7일 전체 갤러리 게시글 수',
-        ),
+        stat_card('7일 신규', f'{total_7d:,}건', sub='전체 갤러리 합산',
+                  tooltip=f'{report_date} 기준 이전 7일'),
         unsafe_allow_html=True,
     )
 with k3:
     st.markdown(
-        stat_card(
-            '이슈 갤러리', f'{issue_cnt}개', sub=f'전체 {total_cnt}개 중',
-            tooltip='이슈 점수 3점 이상 판정 갤러리 수',
-        ),
+        stat_card('이슈 갤러리', f'{issue_cnt}개', sub=f'전체 {total_cnt}개 중',
+                  tooltip='이슈 점수 3점 이상 판정'),
         unsafe_allow_html=True,
     )
 
@@ -162,21 +158,22 @@ st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
 # ── 이슈 알림 배너 ───────────────────────────────────────────────────
 if issue_cnt > 0:
     st.markdown(
-        f'<div class="alert-banner alert-issue">'
-        f'<b>{issue_cnt}개 갤러리</b>에서 이슈가 탐지되었습니다. '
-        f'이슈 점수 높은 순으로 표시됩니다.'
+        f'<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:12px;'
+        f'padding:12px 18px;margin-bottom:18px;font-size:0.88rem;font-weight:600;color:#92400E;">'
+        f'이슈 {issue_cnt}개 갤러리 감지 — 이슈 점수 높은 순 표시'
         f'</div>',
         unsafe_allow_html=True,
     )
 else:
     st.markdown(
-        '<div class="alert-banner alert-clear">'
-        '탐지된 이슈 갤러리가 없습니다.'
+        '<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;'
+        'padding:12px 18px;margin-bottom:18px;font-size:0.88rem;font-weight:600;color:#166534;">'
+        '이슈 감지된 갤러리 없음'
         '</div>',
         unsafe_allow_html=True,
     )
 
-# ── 이슈 갤러리 섹션 ─────────────────────────────────────────────────
+# ── 이슈 갤러리 ──────────────────────────────────────────────────────
 if issue_records:
     st.markdown(sec_header('이슈 탐지 갤러리'), unsafe_allow_html=True)
 
@@ -186,10 +183,10 @@ if issue_records:
         new_today   = int(result.get('new_posts_today', 0))
         new_7d      = int(result.get('new_posts_7d', 0))
         ai_text     = str(result.get('ai_summary', ''))
-        sev_cls     = issue_sev_class(issue_score)
-        bdg_cls     = issue_badge_class(issue_score)
-        sev_lbl     = issue_sev_label(issue_score)
         daily_avg   = round(new_7d / 7, 1) if new_7d else 0
+        sev_col     = issue_sev_color(issue_score)
+        bdg_sty     = issue_sev_badge_style(issue_score)
+        sev_lbl     = issue_sev_label(issue_score)
 
         kw_raw = result.get('top_keywords', '[]')
         if isinstance(kw_raw, str):
@@ -209,44 +206,48 @@ if issue_records:
         else:
             top5 = top5_raw or []
 
-        kw_tags = ' '.join(
-            f'<span class="kw-tag">{kw} <b style="color:#475569">{cnt}</b></span>'
-            for kw, cnt in kw_list[:6]
-        )
+        kw_html = ' '.join(kw_tag(kw, cnt) for kw, cnt in kw_list[:6]) if kw_list else ''
 
-        # ── 갤러리 카드 헤더 ──
+        # ── 갤러리 카드 ──
         st.markdown(
-            f'<div class="issue-card {sev_cls}">'
-            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-            f'<div style="font-size:1.05rem;font-weight:800;color:#0F172A;">{name}</div>'
-            f'<span class="score-badge {bdg_cls}">이슈 {sev_lbl} · 점수 {issue_score}</span>'
+            f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
+            f'padding:20px 24px;margin-bottom:8px;border-left:5px solid {sev_col};'
+            f'box-shadow:0 1px 3px rgba(15,23,42,.06);">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
+            f'<div style="font-size:1.1rem;font-weight:800;color:#0F172A;">{name}</div>'
+            f'<span style="display:inline-flex;align-items:center;padding:3px 10px;'
+            f'border-radius:20px;font-size:0.78rem;font-weight:700;{bdg_sty}">'
+            f'이슈 {sev_lbl} · 점수 {issue_score}</span>'
             f'</div>'
-            f'<div style="display:flex;gap:20px;font-size:0.78rem;color:#475569;margin-bottom:10px;">'
+            f'<div style="display:flex;gap:24px;font-size:0.82rem;color:#475569;margin-bottom:12px;">'
             f'<span>24h: <b style="color:#1E293B">{new_today:,}건</b></span>'
             f'<span>7일: <b style="color:#1E293B">{new_7d:,}건</b></span>'
-            f'<span>7일 일평균: <b style="color:#1E293B">{daily_avg:,.1f}건</b></span>'
+            f'<span>7일 일평균: <b style="color:#1E293B">{daily_avg:.1f}건</b></span>'
             f'</div>'
-            f'<div style="margin-bottom:6px;">{kw_tags}</div>'
+            f'<div>{kw_html}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
-        # ── AI 이슈 요약 (이슈 갤러리는 기본 노출) ──
+        # ── AI 이슈 요약 (항상 노출) ──
         if ai_text and not ai_text.startswith('[AI 생성 실패') and not ai_text.startswith('>'):
-            st.markdown('<div class="summary-card" style="margin-bottom:8px;">', unsafe_allow_html=True)
+            st.markdown(
+                '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;'
+                'padding:16px 20px;margin-bottom:8px;">',
+                unsafe_allow_html=True,
+            )
             st.markdown(ai_text)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ── TOP5 게시글 (접을 수 있는 expander) ──
+        # ── TOP5 (expander) ──
         if top5:
-            with st.expander(f'{name} — TOP 5 게시글 (engagement score 기준)'):
+            with st.expander(f'TOP 5 게시글 (engagement score 기준)'):
                 for rank, post in enumerate(top5[:5], 1):
                     title    = post.get('제목', '')
                     link     = post.get('링크', '')
                     comments = int(post.get('댓글수', 0))
                     likes    = int(post.get('추천수', 0))
                     views    = int(post.get('조회수', 0))
-                    score    = post.get('score', '')
                     date_str = str(post.get('날짜', ''))[:10]
                     title_html = (
                         f'<a href="{link}" target="_blank" '
@@ -254,40 +255,32 @@ if issue_records:
                         if link else title
                     )
                     st.markdown(
-                        f'<div class="top-post">'
-                        f'<span class="top-post-rank">{rank}</span>'
-                        f'<div>'
-                        f'<div class="top-post-title">{title_html}</div>'
-                        f'<div class="top-post-meta">'
-                        f'댓글 {comments} · 추천 {likes} · 조회 {views:,} · {date_str}'
-                        f'{" · 점수 " + str(round(score, 1)) if score else ""}'
-                        f'</div></div></div>',
+                        top_post_item(rank, title_html,
+                                      f'댓글 {comments} · 추천 {likes} · 조회 {views:,} · {date_str}'),
                         unsafe_allow_html=True,
                     )
 
-        st.markdown(
-            '<hr style="border:none;border-top:1px solid #F1F5F9;margin:12px 0;">',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<hr style="border:none;border-top:1px solid #F1F5F9;margin:8px 0 16px;">', unsafe_allow_html=True)
 
 
-# ── 이슈 없는 갤러리 요약 ────────────────────────────────────────────
+# ── 이슈 없는 갤러리 ─────────────────────────────────────────────────
 if non_issue:
-    with st.expander(f'이슈 없는 갤러리 ({len(non_issue)}개) — 정상 범위'):
+    with st.expander(f'이슈 없는 갤러리 ({len(non_issue)}개)'):
         rows_html = ''.join(
-            f'<div style="display:flex;justify-content:space-between;'
-            f'align-items:center;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:0.82rem;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;'
+            f'padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:0.82rem;">'
             f'<span style="color:#334155;font-weight:500;">{r.get("gallery_name","")}</span>'
             f'<span style="color:#94A3B8;">24h {int(r.get("new_posts_today",0)):,}건</span>'
             f'</div>'
             for r in non_issue
         )
         st.markdown(
-            f'<div class="bento-card" style="padding:10px 16px;">{rows_html}</div>',
+            f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;'
+            f'padding:10px 16px;">{rows_html}</div>',
             unsafe_allow_html=True,
         )
 
 # ── 분석 방법론 ───────────────────────────────────────────────────────
 st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
-with st.expander('분석 방법론 및 데이터 기준', expanded=False):
+with st.expander('분석 방법론 및 데이터 기준'):
     st.markdown(methodology_daily_html(report_date), unsafe_allow_html=True)

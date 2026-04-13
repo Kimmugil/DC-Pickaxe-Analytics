@@ -1,6 +1,7 @@
 """
 DC-Pickaxe Analytics — 주간 분석 리포트
-정보 흐름: 헤더/메타 → KPI → AI 종합 요약 → 갤러리별 Bento 카드 → 분석 방법론
+정보 흐름: 헤더 → KPI → AI 종합 요약(Hero) → 갤러리별 카드(AI 노출) → 방법론
+모든 커스텀 HTML은 inline style 사용 (CSS 클래스 미적용 환경 대응)
 """
 import sys
 import os
@@ -20,7 +21,7 @@ st.set_page_config(
 
 from dashboard.dash_styles import (
     inject_css, sec_header, stat_card, gallery_color,
-    methodology_weekly_html,
+    kw_tag, top_post_item, methodology_weekly_html,
 )
 inject_css()
 
@@ -57,7 +58,6 @@ with st.sidebar:
         st.switch_page('app.py')
     st.divider()
 
-    # 주 선택
     try:
         from sheets.reader import get_available_weekly_starts, get_weekly_run_ids
         weekly_starts = get_available_weekly_starts()
@@ -75,7 +75,6 @@ with st.sidebar:
     except Exception:
         pass
 
-    # run_id 선택
     try:
         weekly_run_ids = get_weekly_run_ids(week_start)
     except Exception:
@@ -107,11 +106,11 @@ with st.sidebar:
     rerun_btn = st.button('현재 기준으로 다시 분석', use_container_width=True, key='btn_rerun_weekly')
     if rerun_btn:
         from dashboard.analysis_runner import run_weekly_now
-        with st.spinner(f'{week_start} 주간 재분석 중...'):
+        with st.spinner(f'{week_start} 재분석 중...'):
             success, output = run_weekly_now(week_start)
         if success:
             st.cache_data.clear()
-            st.success('재분석 완료!')
+            st.success('완료!')
             st.rerun()
         else:
             st.error('재분석 실패')
@@ -140,10 +139,11 @@ elif gallery_records:
 
 # ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
-    '<div style="font-size:1.5rem;font-weight:800;color:#0F172A;line-height:1.2;margin-bottom:2px;">주간 분석 리포트</div>'
-    f'<div style="font-size:0.85rem;color:#475569;margin-bottom:16px;">'
-    f'분석 기간: <b style="color:#0F172A">{week_start}</b> ~ <b style="color:#0F172A">{week_end}</b>'
-    f'&nbsp;·&nbsp;갤러리 {len(gallery_records)}개'
+    '<div style="font-size:1.5rem;font-weight:800;color:#0F172A;line-height:1.2;margin-bottom:4px;">'
+    '주간 분석 리포트</div>'
+    f'<div style="font-size:0.85rem;color:#64748B;margin-bottom:18px;">'
+    f'분석 기간: <b style="color:#1E293B">{week_start}</b> ~ <b style="color:#1E293B">{week_end}</b>'
+    f'&nbsp;·&nbsp;갤러리 <b style="color:#1E293B">{len(gallery_records)}개</b>'
     f'{"&nbsp;·&nbsp;회차: " + (sel_rid or "") if sel_rid else ""}'
     f'</div>',
     unsafe_allow_html=True,
@@ -157,37 +157,30 @@ avg_posts        = int(total_posts_week / len(gallery_records)) if gallery_recor
 k1, k2, k3 = st.columns(3)
 with k1:
     st.markdown(
-        stat_card(
-            '주간 전체 게시글', f'{total_posts_week:,}건', sub='전체 갤러리 합산',
-            tooltip=f'{week_start} ~ {week_end} 해당 주 전체 갤러리 게시글 수',
-        ),
+        stat_card('주간 전체 게시글', f'{total_posts_week:,}건', sub='전체 갤러리 합산',
+                  tooltip=f'{week_start} ~ {week_end} 주간 전체'),
         unsafe_allow_html=True,
     )
 with k2:
     st.markdown(
-        stat_card(
-            '가장 활발한 갤러리',
-            most_active.get('gallery_name', '-'),
-            sub=f'{int(most_active.get("total_posts_week", 0)):,}건',
-        ),
+        stat_card('가장 활발한 갤러리',
+                  most_active.get('gallery_name', '-'),
+                  sub=f'{int(most_active.get("total_posts_week", 0)):,}건'),
         unsafe_allow_html=True,
     )
 with k3:
     st.markdown(
-        stat_card(
-            '갤러리 평균', f'{avg_posts:,}건', sub='주간 게시글 평균',
-            tooltip='전체 갤러리 주간 게시글 수 평균',
-        ),
+        stat_card('갤러리 평균', f'{avg_posts:,}건', sub='주간 게시글 평균'),
         unsafe_allow_html=True,
     )
 
-st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 
-# ── AI 종합 요약 ──────────────────────────────────────────────────────
+# ── AI 종합 요약 (Hero 카드) ──────────────────────────────────────────
 st.markdown(sec_header('AI 주간 종합 요약'), unsafe_allow_html=True)
 st.markdown(
     f'<div style="font-size:0.78rem;color:#64748B;margin-bottom:8px;">'
-    f'분석 기간: {week_start} ~ {week_end} · Gemini 2.5 Flash 생성</div>',
+    f'분석 기간: {week_start} ~ {week_end} &nbsp;·&nbsp; Gemini 2.5 Flash 생성</div>',
     unsafe_allow_html=True,
 )
 
@@ -195,7 +188,12 @@ if not summary_df.empty:
     latest_row   = summary_df.iloc[-1]
     summary_text = str(latest_row.get('ai_weekly_summary', ''))
     if summary_text and not summary_text.startswith('>'):
-        st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
+            'padding:24px 28px;margin-bottom:16px;border-left:5px solid #E8A020;'
+            'box-shadow:0 2px 8px rgba(15,23,42,.07);">',
+            unsafe_allow_html=True,
+        )
         st.markdown(summary_text)
         st.markdown('</div>', unsafe_allow_html=True)
     else:
@@ -203,14 +201,13 @@ if not summary_df.empty:
 else:
     st.info('종합 요약 데이터가 없습니다.')
 
-st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 
-# ── 갤러리별 상세 (Bento 2열 그리드) ─────────────────────────────────
+# ── 갤러리별 상세 (2열 Bento) ─────────────────────────────────────────
 st.markdown(sec_header('갤러리별 상세'), unsafe_allow_html=True)
 st.markdown(
-    '<div style="font-size:0.78rem;color:#64748B;margin-bottom:12px;">'
-    'AI 요약 · 주요 키워드 · TOP 5 인기 게시글 (engagement score 기준: 추천수×2 + 댓글수×3 + 조회수×0.05)'
-    '</div>',
+    '<div style="font-size:0.78rem;color:#64748B;margin-bottom:14px;">'
+    'TOP 5 선정: Engagement Score = 추천수×2 + 댓글수×3 + 조회수×0.05</div>',
     unsafe_allow_html=True,
 )
 
@@ -244,39 +241,40 @@ for pair in pairs:
             else:
                 top5 = top5_raw or []
 
-            kw_tags = ' '.join(
-                f'<span class="kw-tag">{kw} <b style="color:#475569">{cnt}</b></span>'
-                for kw, cnt in kw_list[:5]
-            ) or '<span style="color:#94A3B8;font-size:0.78rem;">키워드 없음</span>'
+            kw_html = ' '.join(kw_tag(kw, cnt) for kw, cnt in kw_list[:5]) or (
+                '<span style="color:#94A3B8;font-size:0.78rem;">키워드 없음</span>'
+            )
 
-            # ── 갤러리 카드 헤더 ──
+            # ── 갤러리 헤더 카드 ──
             st.markdown(
-                f'<div class="gallery-card" style="border-top:3px solid {color};">'
-                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
+                f'padding:18px 20px;margin-bottom:6px;border-top:4px solid {color};'
+                f'box-shadow:0 1px 3px rgba(15,23,42,.05);">'
+                f'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">'
                 f'<div style="font-size:1.0rem;font-weight:800;color:#0F172A;">{name}</div>'
                 f'<div style="font-size:0.78rem;color:#94A3B8;margin-left:auto;font-weight:600;">'
-                f'주간 {total:,}건'
+                f'주간 {total:,}건</div>'
                 f'</div>'
-                f'</div>'
-                f'<div style="margin-bottom:8px;">{kw_tags}</div>'
+                f'<div>{kw_html}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-            # ── AI 주간 갤러리 요약 (기본 노출) ──
+            # ── AI 주간 요약 (항상 노출) ──
             if ai_weekly and not ai_weekly.startswith('>'):
                 st.markdown(
-                    '<div style="background:#F8FAFC;border:1px solid #E2E8F0;'
-                    'border-radius:12px;padding:14px 16px;margin-bottom:8px;">'
-                    '<div style="font-size:0.72rem;font-weight:600;color:#64748B;margin-bottom:6px;">AI 주간 요약</div>',
+                    '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;'
+                    'padding:14px 16px;margin-bottom:6px;">'
+                    '<div style="font-size:0.72rem;font-weight:600;color:#64748B;margin-bottom:6px;">'
+                    'AI 주간 요약</div>',
                     unsafe_allow_html=True,
                 )
                 st.markdown(ai_weekly)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # ── TOP5 게시글 (접기 가능) ──
+            # ── TOP5 (expander) ──
             if top5:
-                with st.expander(f'TOP 5 인기 게시글', expanded=False):
+                with st.expander('TOP 5 인기 게시글'):
                     for rank, post in enumerate(top5[:5], 1):
                         title    = post.get('제목', '')
                         link     = post.get('링크', '')
@@ -290,17 +288,12 @@ for pair in pairs:
                             if link else title
                         )
                         st.markdown(
-                            f'<div class="top-post">'
-                            f'<span class="top-post-rank">{rank}</span>'
-                            f'<div>'
-                            f'<div class="top-post-title">{title_html}</div>'
-                            f'<div class="top-post-meta">'
-                            f'댓글 {comments} · 추천 {likes} · 조회 {views:,} · {date_str}'
-                            f'</div></div></div>',
+                            top_post_item(rank, title_html,
+                                          f'댓글 {comments} · 추천 {likes} · 조회 {views:,} · {date_str}'),
                             unsafe_allow_html=True,
                         )
 
 # ── 분석 방법론 ───────────────────────────────────────────────────────
 st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
-with st.expander('분석 방법론 및 데이터 기준', expanded=False):
+with st.expander('분석 방법론 및 데이터 기준'):
     st.markdown(methodology_weekly_html(week_start, week_end), unsafe_allow_html=True)

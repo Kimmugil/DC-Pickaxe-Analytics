@@ -1,6 +1,6 @@
 """
-DC-Pickaxe Analytics — 메인 대시보드 (캘린더 뷰)
-정보 흐름: 개요 KPI → 최신 주간 요약 → 리포트 캘린더 → 분석 실행
+DC-Pickaxe Analytics — 메인 대시보드
+정보 흐름: 타이틀 → 분석 현황 → 최신 주간 요약 → 캘린더
 """
 import sys
 import os
@@ -19,10 +19,10 @@ st.set_page_config(
     initial_sidebar_state='expanded',
 )
 
-from dashboard.dash_styles import inject_css, stat_card, sec_header
+from dashboard.dash_styles import inject_css, sec_header, stat_card
 inject_css()
 
-# ── 캘린더 클릭 네비게이션 처리 ─────────────────────────────────────
+# ── 캘린더 클릭 네비게이션 ──────────────────────────────────────────
 params = st.query_params
 if 'nav_date' in params:
     nav_date = params['nav_date']
@@ -54,47 +54,55 @@ def load_overall_stats():
     return get_latest_overall_stats()
 
 
-# ── 캘린더 HTML 생성 ─────────────────────────────────────────────────
 def _calendar_html(year: int, month: int, cal_data: dict, today: date) -> str:
     cal        = calendar.monthcalendar(year, month)
     month_name = f"{year}년 {month}월"
     dow_headers = ''.join(
-        f'<div class="cal-dow">{d}</div>'
+        f'<div style="text-align:center;font-size:0.7rem;font-weight:700;color:#94A3B8;padding:4px 0;">{d}</div>'
         for d in ['월', '화', '수', '목', '금', '토', '일']
     )
     cells = []
     for week in cal:
         for day in week:
             if day == 0:
-                cells.append('<div class="cal-cell empty"></div>')
+                cells.append('<div></div>')
                 continue
             d           = date(year, month, day)
             d_str       = d.strftime('%Y-%m-%d')
-            today_cls   = ' cal-today' if d == today else ''
+            is_today    = d == today
             report_type = cal_data.get(d_str)
+            today_style = 'outline:2px solid #E8A020;outline-offset:-2px;' if is_today else ''
             if report_type:
                 if report_type == 'both':
-                    badge    = '<span class="cal-badge cal-badge-b">주+일</span>'
+                    badge    = '<span style="font-size:0.58rem;font-weight:700;padding:1px 4px;border-radius:4px;margin-top:2px;background:#E8A020;color:white;">주+일</span>'
                     nav_type = 'weekly'
                 elif report_type == 'weekly':
-                    badge    = '<span class="cal-badge cal-badge-w">주</span>'
+                    badge    = '<span style="font-size:0.58rem;font-weight:700;padding:1px 4px;border-radius:4px;margin-top:2px;background:#E8A020;color:white;">주</span>'
                     nav_type = 'weekly'
                 else:
-                    badge    = '<span class="cal-badge cal-badge-d">일</span>'
+                    badge    = '<span style="font-size:0.58rem;font-weight:700;padding:1px 4px;border-radius:4px;margin-top:2px;background:#475569;color:white;">일</span>'
                     nav_type = 'daily'
                 cells.append(
-                    f'<div class="cal-cell has-report{today_cls}">'
-                    f'<a href="?nav_date={d_str}&nav_type={nav_type}">'
+                    f'<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;'
+                    f'justify-content:center;border-radius:8px;background:#FEF3C7;min-height:34px;{today_style}">'
+                    f'<a href="?nav_date={d_str}&nav_type={nav_type}" '
+                    f'style="text-decoration:none;color:#0F172A;font-weight:700;font-size:0.82rem;'
+                    f'display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;">'
                     f'{day}{badge}</a></div>'
                 )
             else:
-                cells.append(f'<div class="cal-cell{today_cls}">{day}</div>')
+                cells.append(
+                    f'<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;'
+                    f'border-radius:8px;font-size:0.82rem;color:#475569;min-height:34px;{today_style}">{day}</div>'
+                )
     grid = ''.join(cells)
     return (
-        f'<div class="cal-wrap">'
-        f'<div class="cal-title">{month_name}</div>'
-        f'<div class="cal-grid">{dow_headers}{grid}</div>'
-        f'</div>'
+        f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
+        f'padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(15,23,42,.05);">'
+        f'<div style="font-size:0.9rem;font-weight:700;color:#0F172A;margin-bottom:10px;">{month_name}</div>'
+        f'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">'
+        f'{dow_headers}{grid}'
+        f'</div></div>'
     )
 
 
@@ -106,28 +114,25 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     st.divider()
-
     today_str = datetime.now().strftime('%Y-%m-%d')
     st.markdown(
         f'<div style="font-size:0.75rem;color:#64748B;margin-bottom:10px;">'
         f'오늘: <b style="color:#CBD5E1">{today_str}</b></div>',
         unsafe_allow_html=True,
     )
-
     run_btn = st.button('분석 실행 (오늘)', use_container_width=True, key='btn_run_daily')
     if run_btn:
         from dashboard.analysis_runner import run_analysis_now
-        with st.spinner(f'분석 중... ({today_str} 기준)'):
+        with st.spinner(f'분석 중... ({today_str})'):
             success, output = run_analysis_now(today_str)
         if success:
             st.cache_data.clear()
-            st.success('분석 완료!')
+            st.success('완료!')
             st.rerun()
         else:
             st.error('분석 실패')
             with st.expander('오류 로그'):
                 st.code(output[:3000])
-
     st.divider()
     st.markdown(
         '<div style="font-size:0.72rem;color:#475569;line-height:1.9;">'
@@ -141,74 +146,70 @@ with st.sidebar:
     )
     st.divider()
     st.markdown(
-        '<div style="font-size:0.68rem;color:#334155;">DC-Pickaxe Analytics v5.1</div>',
+        '<div style="font-size:0.68rem;color:#334155;">DC-Pickaxe Analytics v6</div>',
         unsafe_allow_html=True,
     )
 
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────
 today = date.today()
-
 try:
     cal_data = load_calendar_data()
 except Exception:
     cal_data = {}
-
 try:
     overall = load_overall_stats()
 except Exception:
     overall = {}
 
-# ── 페이지 헤더 ──────────────────────────────────────────────────────
+# ── 페이지 타이틀 ─────────────────────────────────────────────────────
 st.markdown(
-    '<div style="font-size:1.6rem;font-weight:800;color:#0F172A;line-height:1.2;margin-bottom:2px;">⛏️ DC-Pickaxe Analytics</div>'
-    '<div style="font-size:0.85rem;color:#475569;margin-bottom:14px;">키우기 장르 갤러리 자동 분석 대시보드</div>',
+    '<div style="font-size:1.75rem;font-weight:800;color:#0F172A;line-height:1.15;margin-bottom:3px;">'
+    '⛏️ DC-Pickaxe Analytics</div>'
+    '<div style="font-size:0.85rem;color:#64748B;margin-bottom:18px;">'
+    '키우기 장르 갤러리 자동 분석 대시보드</div>',
     unsafe_allow_html=True,
 )
 
-# ── 상태 표시줄 ───────────────────────────────────────────────────────
+# ── 분석 현황 스트립 ──────────────────────────────────────────────────
 last_date   = overall.get('date', '-')
 total_posts = overall.get('total_posts', 0)
 st.markdown(
-    f'<div class="status-bar">'
-    f'<span>마지막 분석: <b>{last_date}</b></span>'
-    f'<span>누적 수집: <b>{total_posts:,}건</b></span>'
+    f'<div style="background:#F1F5F9;border:1px solid #E2E8F0;border-radius:10px;'
+    f'padding:9px 16px;font-size:0.78rem;color:#475569;'
+    f'display:flex;gap:20px;margin-bottom:20px;">'
+    f'<span>마지막 분석: <b style="color:#1E293B">{last_date}</b></span>'
+    f'<span>누적 수집: <b style="color:#1E293B">{total_posts:,}건</b></span>'
     f'</div>',
     unsafe_allow_html=True,
 )
 
-# ── KPI 카드 (Bento 3열) ─────────────────────────────────────────────
+# ── KPI 카드 (3열 Bento) ──────────────────────────────────────────────
 k1, k2, k3 = st.columns(3)
 with k1:
-    val = overall.get('new_posts_today', 0)
-    sub = f'기준일: {overall.get("date", "-")}'
+    v = overall.get('new_posts_today', 0)
     st.markdown(
-        stat_card(
-            '24h 신규 게시글', f'{val:,}건', sub=sub,
-            tooltip='가장 최근 분석일 당일(00:00~23:59) 전체 갤러리 합산 신규 게시글 수',
-        ),
+        stat_card('24h 신규 게시글', f'{v:,}건',
+                  sub=f'기준일: {overall.get("date", "-")}',
+                  tooltip=f'{last_date} 00:00~23:59 전체 갤러리 합산'),
         unsafe_allow_html=True,
     )
 with k2:
-    val = overall.get('new_posts_7d', 0)
+    v = overall.get('new_posts_7d', 0)
     st.markdown(
-        stat_card(
-            '최근 7일 신규', f'{val:,}건', sub='전체 갤러리 합산',
-            tooltip='가장 최근 분석일 기준 7일 이내 전체 갤러리 합산 게시글 수',
-        ),
+        stat_card('최근 7일 신규', f'{v:,}건', sub='전체 갤러리 합산',
+                  tooltip='마지막 분석일 기준 7일 이내 전체 갤러리 게시글 수'),
         unsafe_allow_html=True,
     )
 with k3:
-    total = overall.get('total_posts', 0)
+    v = overall.get('total_posts', 0)
     st.markdown(
-        stat_card(
-            '누적 게시글', f'{total:,}건', sub='전체 갤러리 누적',
-            tooltip='수집된 전체 게시글 합산 (stats 시트 기준)',
-        ),
+        stat_card('누적 수집 게시글', f'{v:,}건', sub='전체 갤러리 누적',
+                  tooltip='수집된 전체 게시글 합산 (stats 시트 기준)'),
         unsafe_allow_html=True,
     )
 
-st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 
 # ── 최신 주간 요약 ────────────────────────────────────────────────────
 try:
@@ -224,17 +225,22 @@ try:
                 f'분석 기간: <b style="color:#1E293B">{ws_date} ~ {we_date}</b></div>',
                 unsafe_allow_html=True,
             )
-            st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+            st.markdown(
+                '<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
+                'padding:22px 26px;margin-bottom:10px;border-left:5px solid #E8A020;'
+                'box-shadow:0 1px 3px rgba(15,23,42,.06);">',
+                unsafe_allow_html=True,
+            )
             st.markdown(txt)
             st.markdown('</div>', unsafe_allow_html=True)
             if ws_date:
                 st.markdown(
                     f'<a href="?nav_date={ws_date}&nav_type=weekly" '
-                    f'style="font-size:0.8rem;color:#E8A020;text-decoration:none;font-weight:600;">'
+                    f'style="font-size:0.82rem;color:#E8A020;text-decoration:none;font-weight:600;">'
                     f'→ 전체 주간 리포트 보기</a>',
                     unsafe_allow_html=True,
                 )
-            st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 except Exception:
     pass
 
@@ -242,15 +248,12 @@ except Exception:
 st.markdown(sec_header('리포트 캘린더'), unsafe_allow_html=True)
 st.markdown(
     '<div style="font-size:0.78rem;color:#64748B;margin-bottom:12px;">'
-    '날짜를 클릭하면 해당 리포트로 이동합니다. '
-    '주간 리포트 생성일: 매주 <b>월요일</b></div>',
+    '날짜 클릭 시 해당 리포트로 이동합니다. 주간 리포트: 매주 <b>월요일</b></div>',
     unsafe_allow_html=True,
 )
-
-prev_month_date = (today.replace(day=1) - timedelta(days=1))
+prev_month_date = today.replace(day=1) - timedelta(days=1)
 prev_y, prev_m  = prev_month_date.year, prev_month_date.month
 curr_y, curr_m  = today.year, today.month
-
 col_prev, col_curr = st.columns(2)
 with col_prev:
     st.markdown(_calendar_html(prev_y, prev_m, cal_data, today), unsafe_allow_html=True)
