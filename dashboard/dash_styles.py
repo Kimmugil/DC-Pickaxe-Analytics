@@ -1,15 +1,24 @@
 """
-DC-Pickaxe Analytics 디자인 시스템 v7
-사이드바 CSS + 캘린더 HTML (inline style) 만 담당
-나머지는 Streamlit 네이티브 컴포넌트로 처리
+DC-Pickaxe Analytics 디자인 시스템 v8
+변경사항:
+  - GALLERY_COLORS: 단조 회색 → 8색 비비드 팔레트 (구분 가능)
+  - sev_badge_html(): 풀너비 st.error/warning 대신 콤팩트 인라인 배지
+  - 사이드바 CSS: 프레임워크 attribute selector 만 사용 (신뢰성 확보)
 """
 
+# 갤러리 구분용 8색 팔레트 — 명도/채도 충분히 달라 흰 배경에서 모두 구분 가능
 GALLERY_COLORS = [
-    '#0F172A', '#334155', '#64748B', '#94A3B8',
-    '#1E293B', '#475569', '#7C8FA3', '#B0BEC5',
+    '#3B82F6',  # blue
+    '#10B981',  # emerald
+    '#F59E0B',  # amber
+    '#8B5CF6',  # violet
+    '#EF4444',  # red
+    '#06B6D4',  # cyan
+    '#84CC16',  # lime
+    '#EC4899',  # pink
 ]
 
-# 사이드바 다크 테마 CSS — Streamlit 프레임워크 요소만 대상
+# 사이드바 다크 테마 CSS — Streamlit 프레임워크 attribute selector 만 사용
 SIDEBAR_CSS = """
 <style>
 [data-testid="stSidebar"] {
@@ -65,6 +74,24 @@ def issue_sev_color(score: int) -> str:
     return '#94A3B8'
 
 
+def sev_badge_html(score: int) -> str:
+    """
+    이슈 심각도 인라인 배지 — st.error/warning/info 전폭 컴포넌트 대체.
+    inline style 만 사용하므로 Streamlit Cloud 에서도 항상 렌더링됨.
+    """
+    label = issue_sev_label(score)
+    color = issue_sev_color(score)
+    bg    = f'{color}18'
+    return (
+        f'<span style="display:inline-flex;align-items:center;gap:4px;'
+        f'background:{bg};border:1px solid {color};'
+        f'border-radius:20px;padding:3px 10px;'
+        f'font-size:0.78rem;font-weight:700;color:{color};'
+        f'white-space:nowrap;">'
+        f'{label}&nbsp;·&nbsp;{score}점</span>'
+    )
+
+
 def kw_tag(kw: str, cnt: int) -> str:
     return (
         f'<span style="display:inline-block;background:#F1F5F9;border:1px solid #E2E8F0;'
@@ -73,7 +100,23 @@ def kw_tag(kw: str, cnt: int) -> str:
     )
 
 
-# 캘린더 HTML — 인라인 스타일만 사용
+def ai_block_html(text: str, label: str = 'AI 요약') -> str:
+    """
+    AI 요약 텍스트를 위한 시각적 구분 블록 (inline style).
+    st.container(border=True) 내부에서 사용.
+    """
+    safe = text.replace('<', '&lt;').replace('>', '&gt;')
+    return (
+        f'<div style="margin-top:10px;padding:10px 14px;'
+        f'background:#FFFBEB;border-left:3px solid #E8A020;border-radius:0 8px 8px 0;">'
+        f'<div style="font-size:0.72rem;font-weight:700;color:#92400E;'
+        f'letter-spacing:.04em;margin-bottom:6px;">✦ {label}</div>'
+        f'<div style="font-size:0.85rem;color:#1C1917;line-height:1.6;">{safe}</div>'
+        f'</div>'
+    )
+
+
+# 캘린더 HTML — inline style 만 사용
 def calendar_html(year: int, month: int, cal_data: dict, today) -> str:
     import calendar
     from datetime import date
@@ -124,7 +167,7 @@ def calendar_html(year: int, month: int, cal_data: dict, today) -> str:
     )
 
 
-# 분석 방법론 마크다운 — 네이티브 st.markdown 으로 렌더링
+# 분석 방법론 마크다운 — st.markdown() 으로 네이티브 렌더링
 METHODOLOGY_DAILY_TEMPLATE = """
 **분석 기준일:** `{date}`
 

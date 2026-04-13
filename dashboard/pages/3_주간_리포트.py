@@ -1,6 +1,11 @@
 """
-DC-Pickaxe Analytics — 주간 분석 리포트 v7
-정보 흐름: 헤더 → KPI → AI 종합 요약 → 갤러리별 카드
+DC-Pickaxe Analytics — 주간 분석 리포트 v8
+개선사항:
+  - 갤러리 색상: 단조 회색 → 8색 비비드 팔레트
+  - KPI 구조 교정: '가장 활발한 갤러리' metric 올바른 형식으로
+  - 갤러리 정렬: 게시글 수 내림차순 + 순위 표시
+  - 주간 추이 멀티라인 차트 추가
+  - AI 요약: amber 좌측 보더 블록
 탭 구조: [📊 주간 리포트] [🔍 분석 방법론]
 """
 import sys
@@ -20,7 +25,7 @@ st.set_page_config(
 )
 
 from dashboard.dash_styles import (
-    inject_css, gallery_color, kw_tag,
+    inject_css, gallery_color, kw_tag, ai_block_html,
     METHODOLOGY_WEEKLY_TEMPLATE,
 )
 inject_css()
@@ -123,7 +128,12 @@ if gallery_df.empty:
     st.warning(f'**{week_start}** 주간 분석 결과가 없습니다.')
     st.stop()
 
-gallery_records = gallery_df.to_dict('records')
+# 게시글 수 내림차순 정렬
+gallery_records = sorted(
+    gallery_df.to_dict('records'),
+    key=lambda r: int(r.get('total_posts_week', 0)),
+    reverse=True,
+)
 week_end = ''
 if not summary_df.empty:
     week_end = str(summary_df.iloc[-1].get('week_end', ''))
@@ -143,26 +153,68 @@ st.caption(
 tab_report, tab_method = st.tabs(['📊 주간 리포트', '🔍 분석 방법론'])
 
 with tab_report:
-    # ── KPI
+    # ── KPI — 구조 교정: 최다 갤러리는 게시글 수가 value ───────────
     total_posts_week = sum(int(r.get('total_posts_week', 0)) for r in gallery_records)
-    most_active      = max(gallery_records, key=lambda r: int(r.get('total_posts_week', 0)), default={})
+    most_active      = gallery_records[0] if gallery_records else {}
+    most_active_name = most_active.get('gallery_name', '-')
+    most_active_cnt  = int(most_active.get('total_posts_week', 0))
     avg_posts        = int(total_posts_week / len(gallery_records)) if gallery_records else 0
 
     k1, k2, k3 = st.columns(3)
     with k1:
-        st.metric('주간 전체 게시글', f'{total_posts_week:,}건',
-                  help=f'{week_start} ~ {week_end} 전체 갤러리 합산')
+        st.metric(
+            '주간 전체 게시글',
+            f'{total_posts_week:,}건',
+            help=f'{week_start} ~ {week_end} 전체 갤러리 합산',
+        )
     with k2:
-        st.metric('가장 활발한 갤러리',
-                  most_active.get('gallery_name', '-'),
-                  help=f'{int(most_active.get("total_posts_week", 0)):,}건')
+        # value = 게시글 수, caption = 갤러리명
+        st.metric(
+            '주간 최다 게시글',
+            f'{most_active_cnt:,}건',
+            help=f'가장 활발한 갤러리: {most_active_name}',
+        )
+        st.caption(f'· {most_active_name}')
     with k3:
-        st.metric('갤러리 평균', f'{avg_posts:,}건',
-                  help='주간 게시글 갤러리 평균')
+        st.metric(
+            '갤러리 평균',
+            f'{avg_posts:,}건',
+            help='주간 게시글 갤러리 평균',
+        )
 
     st.divider()
 
-    # ── AI 종합 요약
+    # ── 주간 활동 추이 멀티라인 차트 ─────────────────────────────────
+    try:
+        from analyzer.weekly_analyzer import normalize_trends
+        from dashboard.svg_charts import multiline, wrap
+        trend_series = normalize_trends(gallery_records)
+        if trend_series:
+            ml_svg = multiline(trend_series, width=900, height=200)
+            st.markdown(
+                wrap(ml_svg, '갤러리별 주간 활동 추이 (정규화 · 각 갤러리 최대=100)'),
+                unsafe_allow_html=True,
+            )
+
+            # 범례 (inline style)
+            legend_items = ''.join(
+                f'<span style="display:inline-flex;align-items:center;gap:4px;'
+                f'margin-right:12px;font-size:0.78rem;color:#475569;">'
+                f'<span style="display:inline-block;width:12px;height:3px;'
+                f'background:{s["color"]};border-radius:2px;"></span>'
+                f'{s["name"]}</span>'
+                for s in trend_series
+            )
+            st.markdown(
+                f'<div style="margin-top:4px;margin-bottom:8px;">{legend_items}</div>',
+                unsafe_allow_html=True,
+            )
+    except Exception:
+        pass
+
+    st.divider()
+
+    # ── AI 종합 요약 ──────────────────────────────────────────────────
     st.subheader('AI 주간 종합 요약')
     st.caption(f'분석 기간: {week_start} ~ {week_end} · Gemini 2.5 Flash 생성')
 
@@ -179,9 +231,9 @@ with tab_report:
 
     st.divider()
 
-    # ── 갤러리별 상세 (2열)
+    # ── 갤러리별 상세 카드 (2열 · 게시글 수 내림차순) ─────────────────
     st.subheader('갤러리별 상세')
-    st.caption('TOP 5 선정: Engagement Score = 추천수×2 + 댓글수×3 + 조회수×0.05')
+    st.caption('게시글 수 내림차순 정렬 · TOP 5 선정: Engagement Score = 추천수×2 + 댓글수×3 + 조회수×0.05')
 
     pairs = [gallery_records[i:i+2] for i in range(0, len(gallery_records), 2)]
 
@@ -192,8 +244,10 @@ with tab_report:
                 name      = result.get('gallery_name', '')
                 total     = int(result.get('total_posts_week', 0))
                 ai_weekly = str(result.get('ai_gallery_weekly', ''))
+                # 정렬 후 인덱스 사용 (고정 색상 부여)
                 idx       = gallery_records.index(result)
                 color     = gallery_color(idx)
+                rank      = idx + 1
 
                 kw_raw = result.get('top_keywords', '[]')
                 if isinstance(kw_raw, str):
@@ -213,45 +267,60 @@ with tab_report:
                 else:
                     top5 = top5_raw or []
 
-                # 갤러리 색상 구분 바 (inline style)
+                # 갤러리 색상 구분 바 (6px — 충분히 눈에 띔)
                 st.markdown(
-                    f'<div style="height:4px;background:{color};border-radius:2px;margin-bottom:2px;"></div>',
+                    f'<div style="height:6px;background:{color};'
+                    f'border-radius:3px;margin-bottom:1px;"></div>',
                     unsafe_allow_html=True,
                 )
 
                 with st.container(border=True):
+                    # 헤더: 순위 + 갤러리명 + 게시글 수
                     col_name, col_cnt = st.columns([3, 1])
                     with col_name:
-                        st.markdown(f'**{name}**')
+                        rank_dot = (
+                            f'<span style="display:inline-block;width:18px;height:18px;'
+                            f'background:{color};border-radius:50%;'
+                            f'text-align:center;line-height:18px;'
+                            f'font-size:0.65rem;font-weight:700;color:white;'
+                            f'margin-right:5px;">{rank}</span>'
+                        )
+                        st.markdown(
+                            f'{rank_dot}<b style="font-size:0.92rem;">{name}</b>',
+                            unsafe_allow_html=True,
+                        )
                     with col_cnt:
-                        st.caption(f'주간 {total:,}건')
+                        st.metric('주간', f'{total:,}건')
 
                     # 키워드 태그 (inline style)
                     if kw_list:
                         kw_html = ' '.join(kw_tag(kw, cnt) for kw, cnt in kw_list[:5])
                         st.markdown(kw_html, unsafe_allow_html=True)
 
-                    # AI 주간 요약
+                    # AI 주간 요약 — amber 구분 블록
                     if ai_weekly and not ai_weekly.startswith('>'):
-                        st.markdown('**AI 주간 요약**')
-                        st.markdown(ai_weekly)
+                        st.markdown(
+                            ai_block_html(ai_weekly, 'AI 주간 요약'),
+                            unsafe_allow_html=True,
+                        )
 
                     # TOP5
                     if top5:
                         with st.expander('TOP 5 인기 게시글'):
-                            for rank, post in enumerate(top5[:5], 1):
+                            for rank_p, post in enumerate(top5[:5], 1):
                                 title    = post.get('제목', '')
                                 link     = post.get('링크', '')
                                 comments = int(post.get('댓글수', 0))
                                 likes    = int(post.get('추천수', 0))
                                 views    = int(post.get('조회수', 0))
+                                score    = post.get('score', '')
                                 date_str = str(post.get('날짜', ''))[:10]
-                                title_display = (
-                                    f'[{title}]({link})' if link else title
-                                )
+                                t_disp   = f'[{title}]({link})' if link else title
+                                score_str = f' · score {score}' if score else ''
                                 st.markdown(
-                                    f'**{rank}.** {title_display}  \n'
-                                    f'댓글 {comments} · 추천 {likes} · 조회 {views:,} · {date_str}'
+                                    f'**{rank_p}.** {t_disp}  \n'
+                                    f'💬 {comments} &nbsp;👍 {likes} &nbsp;👁 {views:,}'
+                                    f' &nbsp;·&nbsp; {date_str}{score_str}'
                                 )
 
 
