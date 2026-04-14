@@ -115,7 +115,8 @@ if df.empty:
     st.warning(f"**{selected_date}** 데이터가 없습니다.")
     st.stop()
 
-records    = df.to_dict("records")
+# 게시글 수 많은 순 정렬
+records    = sorted(df.to_dict("records"), key=lambda r: int(r.get("posts_total", 0) or 0), reverse=True)
 issue_rows = [r for r in records if str(r.get("has_issue", "0")) == "1"]
 all_rows   = records
 
@@ -225,9 +226,16 @@ for pair in pairs:
                         unsafe_allow_html=True,
                     )
 
+                # AI 요약 (메트릭 바로 아래)
+                if ai_text:
+                    st.markdown(
+                        f'<div style="margin-top:6px;">{ai_block_html(ai_text)}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                 if kws:
                     st.markdown(
-                        f'<div style="margin:6px 0 3px;">{label_html("주요 키워드")}</div>',
+                        f'<div style="margin:8px 0 3px;">{label_html("주요 키워드")}</div>',
                         unsafe_allow_html=True,
                     )
                     tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:8])
@@ -235,7 +243,7 @@ for pair in pairs:
 
                 if tops:
                     st.markdown(
-                        f'<div style="margin:8px 0 4px;">{label_html("TOP 5 게시글")}</div>',
+                        f'<div style="margin:8px 0 4px;">{label_html("이슈 관련 게시글")}</div>',
                         unsafe_allow_html=True,
                     )
                     rows_html = "".join(
@@ -251,12 +259,6 @@ for pair in pairs:
                         for i, p in enumerate(tops)
                     )
                     st.markdown(rows_html, unsafe_allow_html=True)
-
-                if ai_text:
-                    st.markdown(
-                        f'<div style="margin-top:8px;">{ai_block_html(ai_text)}</div>',
-                        unsafe_allow_html=True,
-                    )
 
 
 # ── 이슈 없는 갤러리 요약 (접힘) ─────────────────────────────────────

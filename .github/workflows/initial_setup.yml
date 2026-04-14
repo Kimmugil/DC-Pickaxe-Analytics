@@ -1,0 +1,55 @@
+name: Initial Data Setup (30일 일간 + 5주 주간)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  initial-setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run 30 days of daily analysis
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<'PYEOF'
+          import subprocess, sys
+          from datetime import datetime, timedelta
+          today = datetime.now()
+          for i in range(29, -1, -1):
+              d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+              print(f"\n{'='*50}\n[일간] {d}\n{'='*50}", flush=True)
+              subprocess.run([sys.executable, "run_daily.py", "--date", d])
+          PYEOF
+
+      - name: Run 5 weeks of weekly analysis
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<'PYEOF'
+          import subprocess, sys
+          from datetime import datetime, timedelta
+          today = datetime.now()
+          for i in range(5, 0, -1):
+              monday = today - timedelta(days=today.weekday() + 7 * i)
+              week_start = monday.strftime("%Y-%m-%d")
+              print(f"\n{'='*50}\n[주간] {week_start}\n{'='*50}", flush=True)
+              subprocess.run([sys.executable, "run_weekly.py", "--week-start", week_start])
+          PYEOF

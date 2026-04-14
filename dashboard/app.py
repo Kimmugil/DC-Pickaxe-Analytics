@@ -68,59 +68,59 @@ st.markdown(
 st.caption("키우기 장르 갤러리 동향 분석 대시보드")
 st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 
-# ── 캘린더 ───────────────────────────────────────────────────────────
+# ── 캘린더 (가로 스크롤) ─────────────────────────────────────────────
 try:
     from datetime import date, timedelta
     issue_dates, week_dates = load_calendar_data()
     today = date.today()
-
-    # 오늘 기준 4주 전 월요일부터 표시
-    start = today - timedelta(days=today.weekday() + 28)
-
-    day_headers = "".join(
-        f'<div style="text-align:center;font-size:0.65rem;font-weight:600;'
-        f'letter-spacing:0.06em;text-transform:uppercase;color:#94A3B8;padding:4px 0;">{d}</div>'
-        for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    )
+    start = today - timedelta(days=29)  # 30일 전부터
 
     cells = ""
     cur = start
-    while cur <= today + timedelta(days=6 - today.weekday()):
-        d_str = cur.strftime("%Y-%m-%d")
+    while cur <= today:
+        d_str   = cur.strftime("%Y-%m-%d")
+        day_name = cur.strftime("%a")
         is_today   = cur == today
-        is_future  = cur > today
         has_issue  = d_str in issue_dates
         has_weekly = d_str in week_dates
 
-        bg     = "#4F46E5" if is_today else "#F8FAFC" if is_future else "#FFFFFF"
-        border = "2px solid #4F46E5" if is_today else f"1px solid #E2E8F0"
-        num_c  = "#FFFFFF" if is_today else "#94A3B8" if is_future else "#334155"
+        bg     = "#4F46E5" if is_today else "#FFFFFF"
+        border = "2px solid #4F46E5" if is_today else "1px solid #E2E8F0"
+        num_c  = "#FFFFFF" if is_today else "#334155"
+        day_c  = "#FFFFFF" if is_today else "#94A3B8"
 
-        badges = ""
+        markers = ""
         if has_weekly:
-            badges += '<div style="font-size:0.65rem;line-height:1;">📅</div>'
+            markers += (
+                f'<a href="/weekly" target="_self" style="text-decoration:none;'
+                f'font-size:0.8rem;line-height:1.2;display:block;">📅</a>'
+            )
         if has_issue:
-            badges += '<div style="font-size:0.65rem;line-height:1;">🚨</div>'
+            markers += (
+                f'<a href="/daily" target="_self" style="text-decoration:none;'
+                f'font-size:0.8rem;line-height:1.2;display:block;">🚨</a>'
+            )
 
         cells += (
-            f'<div style="border:{border};border-radius:8px;padding:6px 4px 4px;'
-            f'background:{bg};min-height:52px;display:flex;flex-direction:column;'
-            f'align-items:center;gap:2px;">'
-            f'<div style="font-size:0.75rem;font-weight:600;color:{num_c};">{cur.day}</div>'
-            f'{badges}</div>'
+            f'<div style="display:inline-flex;flex-direction:column;align-items:center;'
+            f'min-width:46px;border:{border};border-radius:8px;padding:5px 4px 6px;'
+            f'background:{bg};gap:1px;flex-shrink:0;">'
+            f'<div style="font-size:0.6rem;font-weight:600;text-transform:uppercase;color:{day_c};">{day_name}</div>'
+            f'<div style="font-size:0.82rem;font-weight:700;color:{num_c};margin:1px 0;">{cur.day}</div>'
+            f'<div style="min-height:18px;text-align:center;">{markers}</div>'
+            f'</div>'
         )
         cur += timedelta(days=1)
 
     calendar_html = (
-        f'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">'
-        f'{day_headers}</div>'
-        f'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'
-        f'{cells}</div>'
-        f'<div style="margin-top:6px;font-size:0.72rem;color:#94A3B8;">'
-        f'📅 주간 리포트&nbsp;&nbsp;🚨 일간 이슈</div>'
+        f'<div style="overflow-x:auto;padding:4px 2px 6px;">'
+        f'<div style="display:flex;gap:5px;width:max-content;">{cells}</div>'
+        f'</div>'
+        f'<div style="font-size:0.71rem;color:#94A3B8;margin-bottom:2px;">'
+        f'📅 주간 리포트 &nbsp;·&nbsp; 🚨 일간 이슈 &nbsp;·&nbsp; 클릭하면 해당 페이지로 이동</div>'
     )
     st.markdown(calendar_html, unsafe_allow_html=True)
-    st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
 except Exception:
     pass
 

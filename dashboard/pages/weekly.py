@@ -21,7 +21,7 @@ st.set_page_config(
 from dashboard.style import (
     inject_css, render_sidebar_nav,
     gallery_color, label_html, kw_tag_html, ai_block_html,
-    post_row_html, daily_count_bar_html, issue_badge_html,
+    post_row_html, daily_count_bar_html,
     C_TITLE, C_HEADING, C_BODY, C_MUTED, C_LABEL, C_BORDER, C_ACCENT,
 )
 inject_css()
@@ -52,7 +52,6 @@ if not weeks:
     st.info("아직 주간 리포트가 없습니다. 분석 봇이 실행된 후 확인해주세요.")
     st.stop()
 
-# 세션에 선택된 주가 있으면 우선 사용
 default_week = st.session_state.get("weekly_week_start", weeks[0])
 default_idx  = weeks.index(default_week) if default_week in weeks else 0
 
@@ -78,7 +77,12 @@ if galleries_df.empty:
     st.warning(f"**{selected_week}** 주간 데이터가 없습니다.")
     st.stop()
 
-records  = galleries_df.to_dict("records")
+# 게시글 수 많은 순 정렬
+records  = sorted(
+    galleries_df.to_dict("records"),
+    key=lambda r: int(r.get("total_posts", 0) or 0),
+    reverse=True,
+)
 week_end = str(records[0].get("week_end", "")) if records else ""
 
 
@@ -127,26 +131,22 @@ for pair in pairs:
             color   = gallery_color(idx)
             ai_text = str(r.get("ai_summary", "") or "")
 
-            # 키워드 파싱
             kw_raw = r.get("keywords", "[]")
             kws    = json.loads(kw_raw) if isinstance(kw_raw, str) else (kw_raw or [])
 
-            # TOP 5 게시글 파싱
             tp_raw = r.get("top_posts", "[]")
             tops   = json.loads(tp_raw) if isinstance(tp_raw, str) else (tp_raw or [])
 
-            # 일별 게시글 수 파싱
             dc_raw = r.get("daily_counts", "{}")
             daily_counts = json.loads(dc_raw) if isinstance(dc_raw, str) else (dc_raw or {})
 
-            # 갤러리 컬러바
             st.markdown(
                 f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:1px;"></div>',
                 unsafe_allow_html=True,
             )
 
             with st.container(border=True):
-                # 헤더 행
+                # 헤더: 갤러리명 + 게시글 수
                 hc1, hc2 = st.columns([3, 1])
                 with hc1:
                     st.markdown(
@@ -154,13 +154,21 @@ for pair in pairs:
                         unsafe_allow_html=True,
                     )
                 with hc2:
-                    st.metric(label_html("TOTAL"), f"{total:,}건")
+                    st.markdown(label_html("TOTAL"), unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="font-size:1.25rem;font-weight:700;color:{C_TITLE};">{total:,}건</div>',
+                        unsafe_allow_html=True,
+                    )
 
                 # 일별 추이 바 차트
                 if daily_counts:
                     st.markdown(label_html("일별 게시글 수"), unsafe_allow_html=True)
+                    st.markdown(daily_count_bar_html(daily_counts), unsafe_allow_html=True)
+
+                # AI 요약
+                if ai_text and not ai_text.startswith("("):
                     st.markdown(
-                        daily_count_bar_html(daily_counts),
+                        f'<div style="margin-top:8px;">{ai_block_html(ai_text)}</div>',
                         unsafe_allow_html=True,
                     )
 
@@ -192,10 +200,3 @@ for pair in pairs:
                         for i, p in enumerate(tops)
                     )
                     st.markdown(rows_html, unsafe_allow_html=True)
-
-                # AI 요약
-                if ai_text and not ai_text.startswith("("):
-                    st.markdown(
-                        f'<div style="margin-top:8px;">{ai_block_html(ai_text)}</div>',
-                        unsafe_allow_html=True,
-                    )
