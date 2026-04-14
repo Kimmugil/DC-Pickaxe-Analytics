@@ -8,7 +8,19 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(python -c \"from dashboard.dash_styles import inject_css, issue_sev_class, issue_badge_class, issue_sev_label, methodology_daily_html; print\\('imports OK'\\)\")",
       "Bash(python -c ':*)",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(where python:*)",
+      "Bash(\"C:\\\\Users\\\\kimjaei\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python314\\\\python.exe\" -m venv venv)",
+      "Bash(venv/Scripts/pip install:*)",
+      "Bash(venv/Scripts/python run_daily.py --setup)",
+      "Bash(venv/Scripts/python.exe -c ':*)",
+      "Bash(dir /b .env*)",
+      "Bash(venv/Scripts/python.exe run_daily.py --setup)",
+      "Bash(python run_weekly.py --week-start 2026-04-06)",
+      "Bash(venv\\\\Scripts\\\\python.exe run_weekly.py --week-start 2026-04-06)",
+      "Bash(\"venv/Scripts/python.exe\" run_weekly.py --week-start 2026-04-06)",
+      "Bash(PYTHONIOENCODING=utf-8 \"venv/Scripts/python.exe\" run_weekly.py --week-start 2026-04-06)",
+      "Bash(python3 -c ':*)"
     ]
   }
 }
