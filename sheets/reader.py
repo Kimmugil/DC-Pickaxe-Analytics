@@ -330,11 +330,15 @@ def get_weekly_gallery_list() -> list[str]:
 
 
 def get_weekly_galleries(week_start: str) -> pd.DataFrame:
-    """특정 주의 갤러리별 주간 분석 결과."""
+    """특정 주의 갤러리별 주간 분석 결과.
+    같은 주를 여러 번 재실행한 경우 gallery_id 기준 마지막 행(최신)만 유지."""
     df = _analytics_sheet("weekly_galleries")
     if df.empty or "week_start" not in df.columns:
         return pd.DataFrame()
-    return df[df["week_start"] == week_start].reset_index(drop=True)
+    df = df[df["week_start"] == week_start].copy()
+    if "gallery_id" in df.columns and not df.empty:
+        df = df.drop_duplicates(subset="gallery_id", keep="last")
+    return df.reset_index(drop=True)
 
 
 def get_weekly_overall(week_start: str) -> dict | None:
