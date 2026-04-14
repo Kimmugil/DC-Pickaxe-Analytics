@@ -198,7 +198,7 @@ for pair in pairs:
             tops   = json.loads(tp_raw) if isinstance(tp_raw, str) else (tp_raw or [])
 
             st.markdown(
-                f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:1px;"></div>',
+                f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:4px;"></div>',
                 unsafe_allow_html=True,
             )
 
@@ -216,34 +216,36 @@ for pair in pairs:
                 with mc1:
                     st.markdown(label_html("오늘 게시글"), unsafe_allow_html=True)
                     st.markdown(
-                        f'<div style="font-size:1.4rem;font-weight:700;color:{C_TITLE};margin-bottom:8px;">{total:,}건</div>',
+                        f'<div style="font-size:1.5rem;font-weight:700;color:{C_TITLE};'
+                        f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 10px;">{total:,}건</div>',
                         unsafe_allow_html=True,
                     )
                 with mc2:
                     st.markdown(label_html("7일 평균"), unsafe_allow_html=True)
                     st.markdown(
-                        f'<div style="font-size:1.4rem;font-weight:700;color:{C_TITLE};margin-bottom:8px;">{avg:.0f}건</div>',
+                        f'<div style="font-size:1.5rem;font-weight:700;color:{C_MUTED};'
+                        f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 10px;">{avg:.0f}건</div>',
                         unsafe_allow_html=True,
                     )
 
                 # AI 요약 (메트릭 바로 아래)
                 if ai_text:
                     st.markdown(
-                        f'<div style="margin-top:6px;">{ai_block_html(ai_text)}</div>',
+                        f'<div style="margin-top:4px;">{ai_block_html(ai_text)}</div>',
                         unsafe_allow_html=True,
                     )
 
                 if kws:
                     st.markdown(
-                        f'<div style="margin:8px 0 3px;">{label_html("주요 키워드")}</div>',
+                        f'<div style="margin:10px 0 4px;">{label_html("주요 키워드")}</div>',
                         unsafe_allow_html=True,
                     )
                     tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:8])
-                    st.markdown(f'<div>{tags}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="line-height:2;">{tags}</div>', unsafe_allow_html=True)
 
                 if tops:
                     st.markdown(
-                        f'<div style="margin:8px 0 4px;">{label_html("이슈 관련 게시글")}</div>',
+                        f'<div style="margin:12px 0 6px;">{label_html("이슈 관련 게시글")}</div>',
                         unsafe_allow_html=True,
                     )
                     rows_html = "".join(

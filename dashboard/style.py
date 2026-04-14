@@ -211,6 +211,34 @@ hr { border-color: #E2E8F0 !important; }
 [data-testid="stContainer"] [data-testid="stMarkdownContainer"] h6 {
     font-size: 0.88rem !important;
 }
+
+/* ── border 컨테이너 내부 패딩 ───────────────────────────────── */
+/* st.container(border=True) 안쪽 여백 확보 */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 1.5rem 1.75rem !important;
+}
+
+/* ── 메트릭 레이블 일관성 ─────────────────────────────────────── */
+[data-testid="stMetricLabel"] {
+    font-size: 0.67rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.07em !important;
+    text-transform: uppercase !important;
+    color: #94A3B8 !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: #0F172A !important;
+    line-height: 1.2 !important;
+}
+
+/* ── 캡션 일관성 ──────────────────────────────────────────────── */
+small, .st-emotion-cache-1y4p8pa p {
+    font-size: 0.78rem !important;
+    color: #64748B !important;
+}
 </style>
 """
 

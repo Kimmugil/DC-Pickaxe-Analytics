@@ -2,9 +2,9 @@
 DC-Pickaxe Analytics — 홈
 
 구성:
-  - 최근 주간 리포트 발행일 + 이동 버튼
-  - 최근 일간 이슈 발행일 + 이동 버튼
-  - 최신 주간 리포트 갤러리 카드 미리보기 (5개)
+  - 30일 가로 스크롤 캘린더 (📅🚨 클릭 이동)
+  - 최신 주간 리포트 갤러리 카드 미리보기
+  - 최근 주간 / 일간 리포트 상태 카드 (하단)
 """
 
 import sys
@@ -68,6 +68,7 @@ st.markdown(
 st.caption("키우기 장르 갤러리 동향 분석 대시보드")
 st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 
+
 # ── 캘린더 (가로 스크롤) ─────────────────────────────────────────────
 try:
     from datetime import date, timedelta
@@ -78,7 +79,7 @@ try:
     cells = ""
     cur = start
     while cur <= today:
-        d_str   = cur.strftime("%Y-%m-%d")
+        d_str    = cur.strftime("%Y-%m-%d")
         day_name = cur.strftime("%a")
         is_today   = cur == today
         has_issue  = d_str in issue_dates
@@ -124,53 +125,9 @@ try:
 except Exception:
     pass
 
-# ── 최근 리포트 현황 카드 ────────────────────────────────────────────
-col_w, col_d = st.columns(2)
-
-with col_w:
-    with st.container(border=True):
-        st.markdown(label_html("최근 주간 리포트"), unsafe_allow_html=True)
-        if weekly_meta:
-            ws = weekly_meta["week_start"]
-            we = weekly_meta["week_end"]
-            st.markdown(
-                f'<div style="font-size:1.35rem;font-weight:700;color:{C_TITLE};'
-                f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 2px;">'
-                f'{ws} ~ {we}</div>',
-                unsafe_allow_html=True,
-            )
-            if st.button("주간 리포트 보기 →", key="btn_weekly", use_container_width=True):
-                st.session_state["weekly_week_start"] = ws
-                st.switch_page("pages/weekly.py")
-        else:
-            st.markdown(
-                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">아직 주간 리포트가 없습니다.</div>',
-                unsafe_allow_html=True,
-            )
-
-with col_d:
-    with st.container(border=True):
-        st.markdown(label_html("최근 일간 이슈 리포트"), unsafe_allow_html=True)
-        if daily_meta:
-            date_str = daily_meta["date"]
-            cnt      = daily_meta["issue_gallery_count"]
-            st.markdown(
-                f'<div style="font-size:1.35rem;font-weight:700;color:{C_TITLE};'
-                f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 2px;">'
-                f'{date_str}</div>',
-                unsafe_allow_html=True,
-            )
-            st.caption(f"이슈 감지 갤러리 {cnt}개")
-            if st.button("일간 이슈 보기 →", key="btn_daily", use_container_width=True):
-                st.session_state["daily_date"] = date_str
-                st.switch_page("pages/daily.py")
-        else:
-            st.markdown(
-                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">최근 이슈 리포트가 없습니다.</div>',
-                unsafe_allow_html=True,
-            )
 
 st.divider()
+
 
 # ── 최신 주간 리포트 미리보기 ────────────────────────────────────────
 if weekly_meta:
@@ -190,14 +147,28 @@ if weekly_meta:
             summary = str(overall["ai_summary"])
             with st.expander("✦ AI 종합 요약 보기", expanded=True):
                 st.markdown(
-                    f'<div style="font-size:0.88rem;color:{C_BODY};line-height:1.75;">{summary}</div>',
+                    f'<div style="font-size:0.88rem;color:{C_BODY};line-height:1.78;">{summary}</div>',
                     unsafe_allow_html=True,
                 )
 
-        # 갤러리 카드 2열
+        # 갤러리 카드 2열 (게시글 수 내림차순)
         if not galleries_df.empty:
-            records = galleries_df.to_dict("records")
-            pairs   = [records[i:i+2] for i in range(0, len(records), 2)]
+            records = sorted(
+                galleries_df.to_dict("records"),
+                key=lambda r: int(r.get("total_posts", 0) or 0),
+                reverse=True,
+            )
+            # 중복 갤러리 제거 (gallery_id 기준 최신 1건만)
+            seen = set()
+            deduped = []
+            for r in records:
+                gid = r.get("gallery_id", r.get("gallery_name", ""))
+                if gid not in seen:
+                    seen.add(gid)
+                    deduped.append(r)
+            records = deduped
+
+            pairs = [records[i:i+2] for i in range(0, len(records), 2)]
             for pair in pairs:
                 cols = st.columns(2)
                 for col, r in zip(cols, pair):
@@ -225,22 +196,30 @@ if weekly_meta:
                                     unsafe_allow_html=True,
                                 )
                             with hc2:
-                                st.metric("게시글", f"{total:,}건")
+                                st.markdown(label_html("TOTAL"), unsafe_allow_html=True)
+                                st.markdown(
+                                    f'<div style="font-size:1.2rem;font-weight:700;color:{C_TITLE};'
+                                    f'letter-spacing:-0.02em;line-height:1.2;">{total:,}건</div>',
+                                    unsafe_allow_html=True,
+                                )
 
                             # 키워드
                             if kws:
                                 tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:6])
                                 st.markdown(
-                                    f'<div style="margin:4px 0 2px;">{tags}</div>',
+                                    f'<div style="margin:6px 0 2px;">{tags}</div>',
                                     unsafe_allow_html=True,
                                 )
 
-                            # AI 요약 (짧게 1~2문장)
+                            # AI 요약 (2문장 미리보기)
                             if ai_text and not ai_text.startswith("("):
-                                short = ". ".join(ai_text.split(". ")[:2]) + ("." if ". " in ai_text else "")
+                                sentences = ai_text.split(". ")
+                                short = ". ".join(sentences[:2])
+                                if not short.endswith("."):
+                                    short += "."
                                 st.markdown(
-                                    f'<div style="font-size:0.84rem;color:{C_MUTED};line-height:1.65;'
-                                    f'margin-top:6px;border-top:1px solid {C_BORDER};padding-top:6px;">'
+                                    f'<div style="font-size:0.84rem;color:{C_MUTED};line-height:1.68;'
+                                    f'margin-top:8px;border-top:1px solid {C_BORDER};padding-top:8px;">'
                                     f'{short}</div>',
                                     unsafe_allow_html=True,
                                 )
@@ -248,5 +227,73 @@ if weekly_meta:
             st.info("갤러리별 데이터가 없습니다.")
     except Exception as e:
         st.warning(f"주간 리포트 로딩 실패: {e}")
+
 else:
     st.info("아직 발행된 주간 리포트가 없습니다. 분석 봇을 실행하면 여기에 표시됩니다.")
+
+
+st.divider()
+
+
+# ── 최근 리포트 현황 카드 (하단) ─────────────────────────────────────
+st.markdown(
+    f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">'
+    f'📋 최근 리포트 현황</div>',
+    unsafe_allow_html=True,
+)
+
+col_w, col_d = st.columns(2)
+
+with col_w:
+    with st.container(border=True):
+        st.markdown(label_html("최근 주간 리포트"), unsafe_allow_html=True)
+        if weekly_meta:
+            ws = weekly_meta["week_start"]
+            we = weekly_meta["week_end"]
+            st.markdown(
+                f'<div style="font-size:1.3rem;font-weight:700;color:{C_TITLE};'
+                f'letter-spacing:-0.02em;line-height:1.25;margin:6px 0 4px;">'
+                f'{ws} ~ {we}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div style="font-size:0.78rem;color:{C_MUTED};margin-bottom:10px;">'
+                f'주간 리포트 발행 완료</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("주간 리포트 보기 →", key="btn_weekly", use_container_width=True):
+                st.session_state["weekly_week_start"] = ws
+                st.switch_page("pages/weekly.py")
+        else:
+            st.markdown(
+                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">'
+                f'아직 주간 리포트가 없습니다.</div>',
+                unsafe_allow_html=True,
+            )
+
+with col_d:
+    with st.container(border=True):
+        st.markdown(label_html("최근 일간 이슈 리포트"), unsafe_allow_html=True)
+        if daily_meta:
+            date_str = daily_meta["date"]
+            cnt      = daily_meta["issue_gallery_count"]
+            st.markdown(
+                f'<div style="font-size:1.3rem;font-weight:700;color:{C_TITLE};'
+                f'letter-spacing:-0.02em;line-height:1.25;margin:6px 0 4px;">'
+                f'{date_str}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div style="font-size:0.78rem;color:{C_MUTED};margin-bottom:10px;">'
+                f'이슈 감지 갤러리 <b style="color:{C_HEADING};">{cnt}개</b></div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("일간 이슈 보기 →", key="btn_daily", use_container_width=True):
+                st.session_state["daily_date"] = date_str
+                st.switch_page("pages/daily.py")
+        else:
+            st.markdown(
+                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">'
+                f'최근 이슈 리포트가 없습니다.</div>',
+                unsafe_allow_html=True,
+            )

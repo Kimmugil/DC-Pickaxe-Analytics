@@ -141,7 +141,7 @@ for pair in pairs:
             daily_counts = json.loads(dc_raw) if isinstance(dc_raw, str) else (dc_raw or {})
 
             st.markdown(
-                f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:1px;"></div>',
+                f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:4px;"></div>',
                 unsafe_allow_html=True,
             )
 
@@ -156,35 +156,39 @@ for pair in pairs:
                 with hc2:
                     st.markdown(label_html("TOTAL"), unsafe_allow_html=True)
                     st.markdown(
-                        f'<div style="font-size:1.25rem;font-weight:700;color:{C_TITLE};">{total:,}건</div>',
+                        f'<div style="font-size:1.35rem;font-weight:700;color:{C_TITLE};'
+                        f'letter-spacing:-0.02em;line-height:1.2;margin-top:4px;">{total:,}건</div>',
                         unsafe_allow_html=True,
                     )
 
                 # 일별 추이 바 차트
                 if daily_counts:
-                    st.markdown(label_html("일별 게시글 수"), unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="margin-top:10px;">{label_html("일별 게시글 수")}</div>',
+                        unsafe_allow_html=True,
+                    )
                     st.markdown(daily_count_bar_html(daily_counts), unsafe_allow_html=True)
 
                 # AI 요약
                 if ai_text and not ai_text.startswith("("):
                     st.markdown(
-                        f'<div style="margin-top:8px;">{ai_block_html(ai_text)}</div>',
+                        f'<div style="margin-top:10px;">{ai_block_html(ai_text)}</div>',
                         unsafe_allow_html=True,
                     )
 
                 # 키워드
                 if kws:
                     st.markdown(
-                        f'<div style="margin:8px 0 4px;">{label_html("주요 키워드")}</div>',
+                        f'<div style="margin:12px 0 4px;">{label_html("주요 키워드")}</div>',
                         unsafe_allow_html=True,
                     )
                     tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:8])
-                    st.markdown(f'<div>{tags}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="line-height:2;">{tags}</div>', unsafe_allow_html=True)
 
                 # TOP 5 게시글
                 if tops:
                     st.markdown(
-                        f'<div style="margin:8px 0 4px;">{label_html("TOP 5 게시글")}</div>',
+                        f'<div style="margin:12px 0 6px;">{label_html("TOP 5 게시글")}</div>',
                         unsafe_allow_html=True,
                     )
                     rows_html = "".join(
