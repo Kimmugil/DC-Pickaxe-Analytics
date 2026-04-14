@@ -13,14 +13,18 @@ import os
 from google import genai
 
 _MODEL = "gemini-2.5-flash"
+_client: genai.Client | None = None
 
 
-def _client() -> genai.Client:
-    return genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+def _get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    return _client
 
 
 def _call(prompt: str) -> str:
-    resp = _client().models.generate_content(model=_MODEL, contents=prompt)
+    resp = _get_client().models.generate_content(model=_MODEL, contents=prompt)
     return resp.text.strip()
 
 
