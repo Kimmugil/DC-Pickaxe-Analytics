@@ -91,14 +91,29 @@ try:
     today = date.today()
     start = today - timedelta(days=29)
 
+    MONTH_KO = ["","1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"]
+
     cells = ""
     cur = start
+    prev_month = None
     while cur <= today:
         d_str    = cur.strftime("%Y-%m-%d")
         day_name = cur.strftime("%a")
         is_today   = cur == today
         has_issue  = d_str in issue_dates
         has_weekly = d_str in week_dates
+
+        # 월 바뀔 때 구분 라벨 삽입
+        if cur.month != prev_month:
+            cells += (
+                f'<div style="display:inline-flex;flex-direction:column;justify-content:center;'
+                f'align-items:center;min-width:26px;padding:0 2px;flex-shrink:0;">'
+                f'<div style="font-size:0.65rem;font-weight:700;color:#94A3B8;'
+                f'writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:0.04em;">'
+                f'{MONTH_KO[cur.month]}</div>'
+                f'</div>'
+            )
+            prev_month = cur.month
 
         bg     = "#4F46E5" if is_today else "#FFFFFF"
         border = "2px solid #4F46E5" if is_today else "1px solid #E2E8F0"
