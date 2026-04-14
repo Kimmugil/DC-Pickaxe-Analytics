@@ -1,5 +1,5 @@
 """
-DC-Pickaxe Analytics — 일간 이슈 리포트 상세
+DC-Pickaxe Analytics — 일간 이슈 리포트
 """
 
 import sys
@@ -42,33 +42,69 @@ def load_daily(date_str: str):
     return get_daily_issues_by_date(date_str)
 
 
-# ── 날짜 선택 ────────────────────────────────────────────────────────
+# ── 페이지 헤더 ──────────────────────────────────────────────────────
+st.markdown(
+    f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
+    f'letter-spacing:-0.03em;margin-bottom:2px;">🚨 일간 이슈 리포트</h1>',
+    unsafe_allow_html=True,
+)
+
 dates = load_issue_dates()
 
 if not dates:
-    st.markdown(
-        f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};">🚨 일간 이슈 리포트</h1>',
-        unsafe_allow_html=True,
-    )
     st.info("아직 이슈 리포트가 없습니다. 이슈 감지 시 자동으로 발행됩니다.")
     st.stop()
 
-default_date = st.session_state.get("daily_date", dates[0])
-default_idx  = dates.index(default_date) if default_date in dates else 0
 
-with st.sidebar:
-    selected_date = st.selectbox(
-        "날짜 선택",
-        options=dates,
-        index=default_idx,
-        key="sel_date",
-        help="이슈가 감지된 날짜만 표시됩니다.",
-    )
-    st.session_state["daily_date"] = selected_date
-    st.caption("이슈 발생일 목록 (최신순)")
+# ── 목록 vs 상세 라우팅 ──────────────────────────────────────────────
+selected_date = st.session_state.get("daily_selected_date", None)
+
+# ── 목록 화면 ────────────────────────────────────────────────────────
+if selected_date is None:
+    st.caption(f"총 {len(dates)}건의 이슈 리포트")
+    st.divider()
+
+    for date in dates:
+        try:
+            df = load_daily(date)
+            records = df.to_dict("records")
+            issue_rows = [r for r in records if str(r.get("has_issue", "0")) == "1"]
+            issue_count = len(issue_rows)
+            issue_names = ", ".join(str(r.get("gallery_name", "")) for r in issue_rows[:3])
+            if len(issue_rows) > 3:
+                issue_names += f" 외 {len(issue_rows)-3}개"
+        except Exception:
+            issue_count = 0
+            issue_names = ""
+
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([2, 4, 1])
+            with c1:
+                st.markdown(
+                    f'<div style="font-size:1.05rem;font-weight:700;color:{C_TITLE};">{date}</div>',
+                    unsafe_allow_html=True,
+                )
+            with c2:
+                st.markdown(
+                    f'<div style="font-size:0.88rem;color:{C_MUTED};padding:4px 0;">'
+                    f'이슈 갤러리 <b style="color:{C_HEADING};">{issue_count}개</b>'
+                    + (f' &nbsp;·&nbsp; {issue_names}' if issue_names else '') +
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            with c3:
+                if st.button("보기 →", key=f"view_{date}", use_container_width=True):
+                    st.session_state["daily_selected_date"] = date
+                    st.rerun()
+
+    st.stop()
 
 
-# ── 데이터 ───────────────────────────────────────────────────────────
+# ── 상세 화면 ────────────────────────────────────────────────────────
+if st.button("← 목록으로"):
+    st.session_state["daily_selected_date"] = None
+    st.rerun()
+
 try:
     df = load_daily(selected_date)
 except Exception as e:
@@ -79,17 +115,10 @@ if df.empty:
     st.warning(f"**{selected_date}** 데이터가 없습니다.")
     st.stop()
 
-records     = df.to_dict("records")
-issue_rows  = [r for r in records if str(r.get("has_issue", "0")) == "1"]
-all_rows    = records  # 이슈 없는 갤러리 포함 전체
+records    = df.to_dict("records")
+issue_rows = [r for r in records if str(r.get("has_issue", "0")) == "1"]
+all_rows   = records
 
-
-# ── 페이지 헤더 ──────────────────────────────────────────────────────
-st.markdown(
-    f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
-    f'letter-spacing:-0.03em;margin-bottom:2px;">🚨 일간 이슈 리포트</h1>',
-    unsafe_allow_html=True,
-)
 st.caption(
     f"{selected_date} · "
     f"이슈 감지: **{len(issue_rows)}개** 갤러리 / "
@@ -106,7 +135,6 @@ if issue_rows:
         unsafe_allow_html=True,
     )
 
-    # 헤더
     hcols = st.columns([2, 1, 1, 1])
     for c, t in zip(hcols, ["갤러리", "오늘 게시글", "7일 평균", "이슈 점수"]):
         with c:
@@ -174,7 +202,6 @@ for pair in pairs:
             )
 
             with st.container(border=True):
-                # 갤러리명 + 이슈 배지
                 hc1, hc2 = st.columns([3, 2])
                 with hc1:
                     st.markdown(
@@ -184,14 +211,20 @@ for pair in pairs:
                 with hc2:
                     st.markdown(issue_badge_html(score), unsafe_allow_html=True)
 
-                # 오늘 vs 평균
                 mc1, mc2 = st.columns(2)
                 with mc1:
-                    st.metric(label_html("오늘 게시글"), f"{total:,}건")
+                    st.markdown(label_html("오늘 게시글"), unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="font-size:1.4rem;font-weight:700;color:{C_TITLE};margin-bottom:8px;">{total:,}건</div>',
+                        unsafe_allow_html=True,
+                    )
                 with mc2:
-                    st.metric(label_html("7일 평균"), f"{avg:.0f}건")
+                    st.markdown(label_html("7일 평균"), unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="font-size:1.4rem;font-weight:700;color:{C_TITLE};margin-bottom:8px;">{avg:.0f}건</div>',
+                        unsafe_allow_html=True,
+                    )
 
-                # 키워드
                 if kws:
                     st.markdown(
                         f'<div style="margin:6px 0 3px;">{label_html("주요 키워드")}</div>',
@@ -200,7 +233,6 @@ for pair in pairs:
                     tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:8])
                     st.markdown(f'<div>{tags}</div>', unsafe_allow_html=True)
 
-                # TOP 5 게시글
                 if tops:
                     st.markdown(
                         f'<div style="margin:8px 0 4px;">{label_html("TOP 5 게시글")}</div>',
@@ -220,12 +252,12 @@ for pair in pairs:
                     )
                     st.markdown(rows_html, unsafe_allow_html=True)
 
-                # AI 요약
                 if ai_text:
                     st.markdown(
                         f'<div style="margin-top:8px;">{ai_block_html(ai_text)}</div>',
                         unsafe_allow_html=True,
                     )
+
 
 # ── 이슈 없는 갤러리 요약 (접힘) ─────────────────────────────────────
 non_issue = [r for r in all_rows if str(r.get("has_issue", "0")) != "1"]
