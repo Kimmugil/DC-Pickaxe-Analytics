@@ -57,6 +57,18 @@ if not dates:
 
 
 # ── 목록 vs 상세 라우팅 ──────────────────────────────────────────────
+# 우선순위: 1) URL 쿼리 파라미터 (?date=YYYY-MM-DD) — 캘린더 아이콘 클릭 시
+#           2) session_state "daily_date" — 홈 버튼 경유
+#           3) session_state "daily_selected_date" — 목록에서 선택
+_qp_date = st.query_params.get("date", None)
+if _qp_date and _qp_date in dates:
+    st.session_state["daily_selected_date"] = _qp_date
+    st.query_params.clear()
+
+_from_home = st.session_state.pop("daily_date", None)
+if _from_home and _from_home in dates:
+    st.session_state["daily_selected_date"] = _from_home
+
 selected_date = st.session_state.get("daily_selected_date", None)
 
 # ── 목록 화면 ────────────────────────────────────────────────────────

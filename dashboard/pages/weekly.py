@@ -60,8 +60,14 @@ if not weeks:
 
 
 # ── 목록 vs 상세 라우팅 ──────────────────────────────────────────────
-# session_state로 선택된 주 관리
-# app.py 홈에서 넘어올 때는 "weekly_week_start" 키 사용
+# 우선순위: 1) URL 쿼리 파라미터 (?week_start=YYYY-MM-DD) — 캘린더 아이콘 클릭 시
+#           2) session_state "weekly_week_start" — 홈 버튼 경유
+#           3) session_state "weekly_selected_week" — 목록에서 선택
+_qp_week = st.query_params.get("week_start", None)
+if _qp_week and _qp_week in weeks:
+    st.session_state["weekly_selected_week"] = _qp_week
+    st.query_params.clear()
+
 _from_home = st.session_state.pop("weekly_week_start", None)
 if _from_home and _from_home in weeks:
     st.session_state["weekly_selected_week"] = _from_home

@@ -93,12 +93,12 @@ try:
         markers = ""
         if has_weekly:
             markers += (
-                f'<a href="/weekly" target="_self" style="text-decoration:none;'
+                f'<a href="/weekly?week_start={d_str}" target="_self" style="text-decoration:none;'
                 f'font-size:0.8rem;line-height:1.2;display:block;">📅</a>'
             )
         if has_issue:
             markers += (
-                f'<a href="/daily" target="_self" style="text-decoration:none;'
+                f'<a href="/daily?date={d_str}" target="_self" style="text-decoration:none;'
                 f'font-size:0.8rem;line-height:1.2;display:block;">🚨</a>'
             )
 
@@ -154,10 +154,13 @@ if weekly_meta:
         if overall and overall.get("ai_summary"):
             summary = str(overall["ai_summary"])
             with st.expander("✦ AI 종합 요약 보기", expanded=True):
+                st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
                 st.markdown(
-                    f'<div style="font-size:0.88rem;color:{C_BODY};line-height:1.78;">{summary}</div>',
+                    f'<div style="font-size:0.88rem;color:{C_BODY};line-height:1.78;'
+                    f'padding:0 6px;">{summary}</div>',
                     unsafe_allow_html=True,
                 )
+                card_spacer(12)
 
         # 갤러리 카드 2열 (게시글 수 내림차순)
         if not galleries_df.empty:

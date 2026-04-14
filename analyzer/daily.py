@@ -21,7 +21,7 @@ from analyzer import keywords as kw_mod
 from analyzer.ai_summary import summarize_daily_issue
 
 
-ISSUE_THRESHOLD = 3
+ISSUE_THRESHOLD = 5   # 이슈 판정 최소 점수 (구: 3 → 신: 5)
 
 
 def _engagement(post: dict) -> float:
@@ -52,29 +52,52 @@ def _calc_issue_score(
     count_today: int,
     avg_7d: float,
 ) -> int:
+    """
+    이슈 점수 산출 (최대 10점, 임계값 ISSUE_THRESHOLD 이상이면 이슈 판정)
+
+    ① 게시량 급증 (비율 × 절대 증분 복합 조건)
+       - 비율만 높아도 절대 증가폭이 작으면 점수 없음
+       - 예: 평균 2건 → 오늘 5건 = 2.5배지만 +3건이므로 점수 없음
+    ② 단일 게시글 화제성 (댓글·추천 수)
+    ③ 바이럴 확산 (화제 게시글 복수 존재 여부)
+    """
     score = 0
 
+    # ① 게시량 급증 (비율 + 절대 증분 모두 만족)
     if avg_7d > 0:
         ratio = count_today / avg_7d
-        if ratio >= 2.0:
+        delta = count_today - avg_7d
+        if ratio >= 3.0 and delta >= 20:
+            score += 4
+        elif ratio >= 2.5 and delta >= 10:
             score += 3
-        elif ratio >= 1.5:
+        elif ratio >= 2.0 and delta >= 5:
             score += 2
-        elif ratio >= 1.2:
+        elif ratio >= 1.5 and delta >= 3:
             score += 1
 
+    # ② 단일 게시글 화제성
     if posts_today:
         top = sorted(posts_today, key=_engagement, reverse=True)
         t1_comments = int(top[0].get("댓글수", 0) or 0)
         t1_likes    = int(top[0].get("추천수", 0) or 0)
-        if t1_comments >= 30:
+        if t1_comments >= 50:
+            score += 3
+        elif t1_comments >= 30:
             score += 2
         elif t1_comments >= 15:
             score += 1
-        if t1_likes >= 15:
+        if t1_likes >= 20:
             score += 2
-        elif t1_likes >= 7:
+        elif t1_likes >= 10:
             score += 1
+
+    # ③ 바이럴 확산 (댓글 10개 이상 게시글 복수 존재)
+    hot_posts = sum(1 for p in posts_today if int(p.get("댓글수", 0) or 0) >= 10)
+    if hot_posts >= 5:
+        score += 2
+    elif hot_posts >= 3:
+        score += 1
 
     return min(score, 10)
 
