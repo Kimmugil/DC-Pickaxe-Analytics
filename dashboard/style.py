@@ -281,7 +281,6 @@ def render_sidebar_nav() -> None:
         st.page_link("pages/methodology.py",  label="📖  분석 방법",    use_container_width=True)
         st.divider()
         st.link_button("⛏️ 곡괭이 감시하러 가기", "https://kimmugil-dc-pickaxe-dashboard.streamlit.app/", use_container_width=True)
-        st.divider()
 
         # 사이드바 배너 이미지
         import os
