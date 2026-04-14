@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 from dashboard.style import (
-    inject_css, render_sidebar_nav,
+    inject_css, render_sidebar_nav, card_spacer,
     gallery_color, label_html, kw_tag_html, ai_block_html,
     C_TITLE, C_HEADING, C_BODY, C_MUTED, C_LABEL, C_BORDER, C_ACCENT,
     C_ISSUE_H, C_ISSUE_M, C_ISSUE_L, C_GREEN,
@@ -231,6 +231,8 @@ if weekly_meta:
                                     f'{short}</div>',
                                     unsafe_allow_html=True,
                                 )
+
+                            card_spacer(10)
         else:
             st.info("갤러리별 데이터가 없습니다.")
     except Exception as e:
@@ -278,6 +280,7 @@ with col_w:
                 f'아직 주간 리포트가 없습니다.</div>',
                 unsafe_allow_html=True,
             )
+        card_spacer(8)
 
 with col_d:
     with st.container(border=True):
@@ -305,3 +308,4 @@ with col_d:
                 f'최근 이슈 리포트가 없습니다.</div>',
                 unsafe_allow_html=True,
             )
+        card_spacer(8)

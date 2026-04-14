@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 from dashboard.style import (
-    inject_css, render_sidebar_nav,
+    inject_css, render_sidebar_nav, card_spacer,
     gallery_color, label_html, kw_tag_html, ai_block_html,
     post_row_html, issue_badge_html,
     C_TITLE, C_HEADING, C_BODY, C_MUTED, C_LABEL, C_BORDER,
@@ -96,6 +96,7 @@ if selected_date is None:
                 if st.button("보기 →", key=f"view_{date}", use_container_width=True):
                     st.session_state["daily_selected_date"] = date
                     st.rerun()
+            card_spacer(8)
 
     st.stop()
 
@@ -261,6 +262,8 @@ for pair in pairs:
                         for i, p in enumerate(tops)
                     )
                     st.markdown(rows_html, unsafe_allow_html=True)
+
+                card_spacer(12)
 
 
 # ── 이슈 없는 갤러리 요약 (접힘) ─────────────────────────────────────

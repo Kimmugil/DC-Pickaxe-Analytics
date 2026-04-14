@@ -213,41 +213,30 @@ hr { border-color: #E2E8F0 !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PADDING FIX — border 컨테이너 내부 여백
+   PADDING FIX (v3)
 
-   문제: Streamlit st.columns()는 내부적으로 stHorizontalBlock에
-         negative margin(-1rem 등)을 사용해 그리드 정렬을 맞춤.
-         이 negative margin이 외부 컨테이너 padding을 상쇄해서
-         텍스트가 테두리에 붙어 보임.
-
-   해결: border wrapper 자체에 padding 대신
-         wrapper 안의 직접 자식 vertical block에 padding 적용.
-         horizontal block의 negative margin을 0으로 리셋.
+   Streamlit 1.36+ emotion CSS가 !important로 container padding을
+   내부적으로 고정. CSS 오버라이드 불가 → 코드 레벨에서 spacer 삽입.
+   아래 CSS는 최대한 지원하되 코드 spacer가 주요 수단.
    ══════════════════════════════════════════════════════════════ */
 
-/* 1. border wrapper 자체는 padding 없이 */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 0 !important;
+/* 클래스/testid 양쪽 모두 시도 */
+.stVerticalBlockBorderWrapper,
+[data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 1rem 1.25rem !important;
+    box-sizing: border-box !important;
 }
 
-/* 2. wrapper 바로 안쪽 content block에 padding 적용 */
-div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
-    padding: 1.25rem 1.5rem !important;
-}
-
-/* 3. 내부 컬럼 블록의 negative margin 제거 (padding 상쇄 방지) */
-div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+/* 내부 컬럼의 negative margin 리셋 */
+.stVerticalBlockBorderWrapper .stHorizontalBlock,
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
     margin-left: 0 !important;
     margin-right: 0 !important;
-    gap: 0.75rem !important;
 }
 
-/* 4. expander 내용 영역 패딩 */
-div[data-testid="stExpander"] details > div {
-    padding: 0.75rem 1.25rem !important;
-}
-div[data-testid="stExpander"] details summary {
-    padding: 0.6rem 0.75rem !important;
+/* expander 내용 영역 */
+[data-testid="stExpander"] details > div {
+    padding: 0.75rem 1rem !important;
 }
 
 /* ── 메트릭 레이블 일관성 ─────────────────────────────────────── */
@@ -292,6 +281,17 @@ def render_sidebar_nav() -> None:
         st.divider()
         st.link_button("⛏️ 곡괭이 감시하러 가기", "https://kimmugil-dc-pickaxe-dashboard.streamlit.app/", use_container_width=True)
         st.divider()
+
+
+# ── 코드 레벨 패딩 헬퍼 ─────────────────────────────────────────────
+
+def card_spacer(px: int = 12) -> None:
+    """
+    st.container(border=True) 안에서 마지막 요소 뒤에 호출.
+    CSS로 해결 불가능한 하단 여백을 직접 삽입.
+    """
+    import streamlit as st
+    st.markdown(f'<div style="height:{px}px;"></div>', unsafe_allow_html=True)
 
 
 # ── HTML 컴포넌트 헬퍼 ────────────────────────────────────────────────
