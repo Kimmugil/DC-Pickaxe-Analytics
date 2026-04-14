@@ -213,17 +213,15 @@ for pair in pairs:
             dc_raw = r.get("daily_counts", "{}")
             daily_counts = json.loads(dc_raw) if isinstance(dc_raw, str) else (dc_raw or {})
 
-            st.markdown(
-                f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:4px;"></div>',
-                unsafe_allow_html=True,
-            )
-
             with st.container(border=True):
-                # 헤더: 갤러리명 + 게시글 수
+                # 헤더: 갤러리명 (컬러 닷) + 게시글 수
                 hc1, hc2 = st.columns([3, 1])
                 with hc1:
                     st.markdown(
-                        f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};">{name}</div>',
+                        f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};'
+                        f'display:flex;align-items:center;gap:7px;">'
+                        f'<span style="display:inline-block;width:9px;height:9px;border-radius:50%;'
+                        f'background:{color};flex-shrink:0;"></span>{name}</div>',
                         unsafe_allow_html=True,
                     )
                 with hc2:

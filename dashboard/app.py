@@ -2,8 +2,9 @@
 DC-Pickaxe Analytics — 홈
 
 구성:
-  - 30일 가로 스크롤 캘린더 (📅📌 클릭 이동)
-  - 최신 주간 리포트 갤러리 카드 미리보기
+  - 30일 가로 스크롤 캘린더 (📅📌 클릭 이동, 오늘 자동 포커스)
+  - 최신 주간 리포트 풀 디테일 (막대그래프 포함)
+  - 최근 일간 이슈 3건 카드
   - 최근 주간 / 일간 리포트 상태 카드 (하단)
 """
 
@@ -12,7 +13,9 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
+import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -26,6 +29,7 @@ st.set_page_config(
 from dashboard.style import (
     inject_css, render_sidebar_nav, card_spacer,
     gallery_color, label_html, kw_tag_html, ai_block_html,
+    daily_count_bar_html, issue_badge_html, post_row_html,
     C_TITLE, C_HEADING, C_BODY, C_MUTED, C_LABEL, C_BORDER, C_ACCENT,
     C_ISSUE_H, C_ISSUE_M, C_ISSUE_L, C_GREEN,
 )
@@ -56,6 +60,17 @@ def load_calendar_data():
     return set(get_daily_issue_dates()), set(get_weekly_gallery_list())
 
 
+@st.cache_data(ttl=300)
+def load_recent_issues():
+    from sheets.reader import get_daily_issues
+    df = get_daily_issues(n=30)
+    if df.empty:
+        return []
+    if "issue_score" in df.columns:
+        df["issue_score"] = pd.to_numeric(df["issue_score"], errors="coerce").fillna(0).astype(int)
+    return df.head(3).to_dict("records")
+
+
 weekly_meta, daily_meta = load_home_data()
 
 
@@ -69,7 +84,7 @@ st.caption("키우기 장르 갤러리 동향 분석 대시보드")
 st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 
 
-# ── 캘린더 (가로 스크롤) ─────────────────────────────────────────────
+# ── 캘린더 (가로 스크롤, 오늘 자동 포커스) ─────────────────────────────
 try:
     from datetime import date, timedelta
     issue_dates, week_dates = load_calendar_data()
@@ -89,21 +104,22 @@ try:
         border = "2px solid #4F46E5" if is_today else "1px solid #E2E8F0"
         num_c  = "#FFFFFF" if is_today else "#334155"
         day_c  = "#FFFFFF" if is_today else "#94A3B8"
+        today_attr = ' id="cal-today"' if is_today else ""
 
         markers = ""
         if has_weekly:
             markers += (
-                f'<a href="/weekly?week_start={d_str}" target="_self" style="text-decoration:none;'
+                f'<a href="/weekly?week_start={d_str}" target="_parent" style="text-decoration:none;'
                 f'font-size:0.8rem;line-height:1.2;display:block;">📅</a>'
             )
         if has_issue:
             markers += (
-                f'<a href="/daily?date={d_str}" target="_self" style="text-decoration:none;'
+                f'<a href="/daily?date={d_str}" target="_parent" style="text-decoration:none;'
                 f'font-size:0.8rem;line-height:1.2;display:block;">📌</a>'
             )
 
         cells += (
-            f'<div style="display:inline-flex;flex-direction:column;align-items:center;'
+            f'<div{today_attr} style="display:inline-flex;flex-direction:column;align-items:center;'
             f'min-width:46px;border:{border};border-radius:8px;padding:5px 4px 6px;'
             f'background:{bg};gap:1px;flex-shrink:0;">'
             f'<div style="font-size:0.6rem;font-weight:600;text-transform:uppercase;color:{day_c};">{day_name}</div>'
@@ -113,15 +129,34 @@ try:
         )
         cur += timedelta(days=1)
 
-    calendar_html = (
-        f'<div style="overflow-x:auto;padding:4px 2px 6px;">'
-        f'<div style="display:flex;gap:5px;width:max-content;">{cells}</div>'
-        f'</div>'
-        f'<div style="font-size:0.71rem;color:#94A3B8;margin-bottom:2px;">'
-        f'📅 주간 리포트 &nbsp;·&nbsp; 📌 일간 이슈 &nbsp;·&nbsp; 클릭하면 해당 페이지로 이동</div>'
-    )
-    st.markdown(calendar_html, unsafe_allow_html=True)
-    st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
+    cal_html = f"""<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<style>
+  body{{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:transparent;overflow:hidden;}}
+  a{{text-decoration:none;}}
+  #cal-scroll{{overflow-x:auto;padding:4px 2px 6px;scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent;}}
+  #cal-scroll::-webkit-scrollbar{{height:4px;}}
+  #cal-scroll::-webkit-scrollbar-track{{background:transparent;}}
+  #cal-scroll::-webkit-scrollbar-thumb{{background:#CBD5E1;border-radius:2px;}}
+</style>
+</head><body>
+<div id="cal-scroll">
+  <div style="display:flex;gap:5px;width:max-content;">{cells}</div>
+</div>
+<div style="font-size:0.71rem;color:#94A3B8;margin-top:4px;">
+  📅 주간 리포트 &nbsp;·&nbsp; 📌 일간 이슈 &nbsp;·&nbsp; 클릭하면 해당 페이지로 이동
+</div>
+<script>
+  (function(){{
+    var c=document.getElementById('cal-scroll');
+    var t=document.getElementById('cal-today');
+    if(c&&t) c.scrollLeft=Math.max(0,t.offsetLeft-c.clientWidth/2+t.offsetWidth/2);
+  }})();
+</script>
+</body></html>"""
+
+    components.html(cal_html, height=108, scrolling=False)
+    st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 except Exception:
     pass
 
@@ -129,7 +164,7 @@ except Exception:
 st.divider()
 
 
-# ── 최신 주간 리포트 미리보기 ────────────────────────────────────────
+# ── 최신 주간 리포트 (풀 디테일) ────────────────────────────────────────
 if weekly_meta:
     ws = weekly_meta["week_start"]
     we = weekly_meta["week_end"]
@@ -150,7 +185,7 @@ if weekly_meta:
     try:
         galleries_df, overall = load_latest_weekly_galleries(ws)
 
-        # 전체 AI 요약
+        # 전체 AI 종합 요약
         if overall and overall.get("ai_summary"):
             summary = str(overall["ai_summary"])
             with st.expander("✦ AI 종합 요약 보기", expanded=True):
@@ -169,7 +204,7 @@ if weekly_meta:
                 key=lambda r: int(r.get("total_posts", 0) or 0),
                 reverse=True,
             )
-            # 중복 갤러리 제거 (gallery_id 기준 최신 1건만)
+            # 중복 제거 (gallery_id 기준)
             seen = set()
             deduped = []
             for r in records:
@@ -188,22 +223,27 @@ if weekly_meta:
                         total   = int(r.get("total_posts", 0) or 0)
                         idx     = records.index(r)
                         color   = gallery_color(idx)
-
-                        kw_raw  = r.get("keywords", "[]")
-                        kws     = json.loads(kw_raw) if isinstance(kw_raw, str) else (kw_raw or [])
-
                         ai_text = str(r.get("ai_summary", "") or "")
 
-                        st.markdown(
-                            f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:2px;"></div>',
-                            unsafe_allow_html=True,
-                        )
+                        kw_raw = r.get("keywords", "[]")
+                        kws    = json.loads(kw_raw) if isinstance(kw_raw, str) else (kw_raw or [])
+
+                        tp_raw = r.get("top_posts", "[]")
+                        tops   = json.loads(tp_raw) if isinstance(tp_raw, str) else (tp_raw or [])
+
+                        dc_raw = r.get("daily_counts", "{}")
+                        daily_counts = json.loads(dc_raw) if isinstance(dc_raw, str) else (dc_raw or {})
+
                         with st.container(border=True):
-                            # 갤러리명 + 게시글 수
+                            # 갤러리명 (컬러 닷) + 게시글 수
                             hc1, hc2 = st.columns([3, 1])
                             with hc1:
                                 st.markdown(
-                                    f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};">{name}</div>',
+                                    f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};'
+                                    f'display:flex;align-items:center;gap:7px;">'
+                                    f'<span style="display:inline-block;width:9px;height:9px;'
+                                    f'border-radius:50%;background:{color};flex-shrink:0;"></span>'
+                                    f'{name}</div>',
                                     unsafe_allow_html=True,
                                 )
                             with hc2:
@@ -214,28 +254,51 @@ if weekly_meta:
                                     unsafe_allow_html=True,
                                 )
 
+                            # 일별 추이 바 차트
+                            if daily_counts:
+                                st.markdown(
+                                    f'<div style="margin-top:10px;">{label_html("일별 게시글 수")}</div>',
+                                    unsafe_allow_html=True,
+                                )
+                                st.markdown(daily_count_bar_html(daily_counts), unsafe_allow_html=True)
+
+                            # AI 요약
+                            if ai_text and not ai_text.startswith("("):
+                                st.markdown(
+                                    f'<div style="margin-top:10px;">{ai_block_html(ai_text)}</div>',
+                                    unsafe_allow_html=True,
+                                )
+
                             # 키워드
                             if kws:
-                                tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:6])
                                 st.markdown(
-                                    f'<div style="margin:6px 0 2px;">{tags}</div>',
+                                    f'<div style="margin:12px 0 4px;">{label_html("주요 키워드")}</div>',
                                     unsafe_allow_html=True,
                                 )
+                                tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:8])
+                                st.markdown(f'<div style="line-height:2;">{tags}</div>', unsafe_allow_html=True)
 
-                            # AI 요약 (2문장 미리보기)
-                            if ai_text and not ai_text.startswith("("):
-                                sentences = ai_text.split(". ")
-                                short = ". ".join(sentences[:2])
-                                if not short.endswith("."):
-                                    short += "."
+                            # TOP 5 게시글
+                            if tops:
                                 st.markdown(
-                                    f'<div style="font-size:0.84rem;color:{C_MUTED};line-height:1.68;'
-                                    f'margin-top:8px;border-top:1px solid {C_BORDER};padding-top:8px;">'
-                                    f'{short}</div>',
+                                    f'<div style="margin:12px 0 6px;">{label_html("TOP 5 게시글")}</div>',
                                     unsafe_allow_html=True,
                                 )
+                                rows_html = "".join(
+                                    post_row_html(
+                                        rank=i + 1,
+                                        title=p.get("제목", ""),
+                                        url=p.get("링크", ""),
+                                        comments=int(p.get("댓글수", 0) or 0),
+                                        likes=int(p.get("추천수", 0) or 0),
+                                        views=int(p.get("조회수", 0) or 0),
+                                        date_str=str(p.get("날짜", ""))[:10],
+                                    )
+                                    for i, p in enumerate(tops)
+                                )
+                                st.markdown(rows_html, unsafe_allow_html=True)
 
-                            card_spacer(10)
+                            card_spacer(12)
         else:
             st.info("갤러리별 데이터가 없습니다.")
     except Exception as e:
@@ -243,6 +306,61 @@ if weekly_meta:
 
 else:
     st.info("아직 발행된 주간 리포트가 없습니다. 분석 봇을 실행하면 여기에 표시됩니다.")
+
+
+st.divider()
+
+
+# ── 최근 일간 이슈 (최신 3건 카드) ─────────────────────────────────────
+st.markdown(
+    f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">'
+    f'📌 최근 일간 이슈</div>',
+    unsafe_allow_html=True,
+)
+
+try:
+    recent_issues = load_recent_issues()
+    if recent_issues:
+        issue_cols = st.columns(3)
+        for col, r in zip(issue_cols, recent_issues):
+            with col:
+                name     = str(r.get("gallery_name", ""))
+                date_str = str(r.get("date", ""))
+                score    = int(r.get("issue_score", 0) or 0)
+                ai_text  = str(r.get("ai_summary", "") or "")
+
+                with st.container(border=True):
+                    st.markdown(label_html(date_str), unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};'
+                        f'margin:4px 0 6px;">{name}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(issue_badge_html(score), unsafe_allow_html=True)
+                    if ai_text:
+                        sentences = ai_text.split(". ")
+                        short = ". ".join(sentences[:2])
+                        if not short.endswith("."):
+                            short += "."
+                        st.markdown(
+                            f'<div style="font-size:0.82rem;color:{C_MUTED};line-height:1.65;'
+                            f'margin-top:8px;border-top:1px solid {C_BORDER};padding-top:8px;">'
+                            f'{short}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    card_spacer(8)
+                    if st.button(
+                        "이슈 상세보기 →",
+                        key=f"issue_{date_str}_{name}",
+                        use_container_width=True,
+                    ):
+                        st.session_state["daily_selected_date"] = date_str
+                        st.switch_page("pages/daily.py")
+                    card_spacer(8)
+    else:
+        st.info("최근 발행된 일간 이슈가 없습니다.")
+except Exception:
+    st.info("일간 이슈 데이터를 불러올 수 없습니다.")
 
 
 st.divider()
