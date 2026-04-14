@@ -106,10 +106,10 @@ try:
         # 월 바뀔 때 구분 라벨 삽입
         if cur.month != prev_month:
             cells += (
-                f'<div style="display:inline-flex;flex-direction:column;justify-content:center;'
-                f'align-items:center;min-width:26px;padding:0 2px;flex-shrink:0;">'
-                f'<div style="font-size:0.65rem;font-weight:700;color:#94A3B8;'
-                f'writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:0.04em;">'
+                f'<div style="display:inline-flex;flex-direction:column;justify-content:flex-end;'
+                f'align-items:center;min-width:28px;padding:0 3px 8px;flex-shrink:0;">'
+                f'<div style="font-size:0.62rem;font-weight:700;color:#94A3B8;'
+                f'white-space:nowrap;letter-spacing:0.02em;">'
                 f'{MONTH_KO[cur.month]}</div>'
                 f'</div>'
             )
