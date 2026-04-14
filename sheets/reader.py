@@ -5,10 +5,16 @@ Google Sheets 읽기 모듈
   1. 마스터시트      → 갤러리 목록 (갤러리명, ID, 시트URL)
   2. 갤러리 시트     → 원본 게시글 (글번호, 제목, 본문, 날짜, 링크, 댓글수, 조회수, 추천수)
   3. Analytics 시트  → 분석 결과 (daily_issues, weekly_galleries, weekly_overall)
+
+Rate-limit 대응:
+  - _client()       : 모듈 레벨 싱글턴 — 프로세스 내 1회만 인증
+  - _gallery_df()   : sheet_url별 인메모리 캐시 — 같은 시트를 1회만 읽음
+  - _read_with_retry: 429 발생 시 지수 백오프 재시도 (최대 5회)
 """
 
 import os
 import json
+import time
 from datetime import datetime, timedelta
 
 import gspread
@@ -24,17 +30,45 @@ _SCOPES = [
 _GALLERY_COLS = ["글번호", "제목", "본문", "작성자", "날짜", "링크", "댓글수", "조회수", "추천수"]
 
 
-# ── 인증 ──────────────────────────────────────────────────────────────
+# ── 인증 (싱글턴) ─────────────────────────────────────────────────────
+
+_gc: gspread.Client | None = None
+
 
 def _client() -> gspread.Client:
-    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if raw:
-        info = json.loads(raw)
-        creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
-    else:
-        path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-        creds = Credentials.from_service_account_file(path, scopes=_SCOPES)
-    return gspread.authorize(creds)
+    """모듈 레벨 싱글턴 gspread 클라이언트. 프로세스 내 1회만 인증."""
+    global _gc
+    if _gc is None:
+        raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        if raw:
+            info = json.loads(raw)
+            creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
+        else:
+            path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+            creds = Credentials.from_service_account_file(path, scopes=_SCOPES)
+        _gc = gspread.authorize(creds)
+    return _gc
+
+
+# ── 429 재시도 래퍼 ──────────────────────────────────────────────────
+
+def _read_with_retry(fn, *args, max_retries: int = 5, **kwargs):
+    """
+    fn(*args, **kwargs) 호출. 429(Quota Exceeded) 시 지수 백오프로 재시도.
+    최대 max_retries회 시도 후에도 실패하면 예외를 올림.
+    """
+    for attempt in range(max_retries):
+        try:
+            return fn(*args, **kwargs)
+        except gspread.exceptions.APIError as e:
+            if "429" in str(e) or "Quota" in str(e):
+                wait = 2 ** attempt * 10  # 10s, 20s, 40s, 80s, 160s
+                print(f"  [429] Quota exceeded — {wait}초 대기 후 재시도 ({attempt+1}/{max_retries})", flush=True)
+                time.sleep(wait)
+            else:
+                raise
+    # 마지막 시도
+    return fn(*args, **kwargs)
 
 
 # ── 마스터시트 ────────────────────────────────────────────────────────
@@ -45,8 +79,8 @@ def get_gallery_list() -> list[dict]:
     Returns: [{'gallery_name': str, 'gallery_id': str, 'sheet_url': str}, ...]
     """
     gc = _client()
-    sh = gc.open_by_url(os.environ["DC_PICKAXE_MASTER_SHEET_URL"])
-    rows = sh.get_worksheet(0).get_all_records()
+    sh = _read_with_retry(gc.open_by_url, os.environ["DC_PICKAXE_MASTER_SHEET_URL"])
+    rows = _read_with_retry(sh.get_worksheet(0).get_all_records)
     result = []
     for r in rows:
         name = str(r.get("갤러리명", "")).strip()
@@ -59,14 +93,34 @@ def get_gallery_list() -> list[dict]:
 
 # ── 갤러리 시트 (원본 게시글) ──────────────────────────────────────────
 
+# 프로세스 내 캐시: {sheet_url: DataFrame}
+# 같은 프로세스에서 동일 URL을 여러 번 요청해도 1회만 API 호출
+_df_cache: dict[str, pd.DataFrame] = {}
+
+
+def clear_gallery_cache() -> None:
+    """필요 시 캐시 초기화 (테스트 또는 강제 갱신용)."""
+    _df_cache.clear()
+
+
 def _gallery_df(sheet_url: str) -> pd.DataFrame:
-    """갤러리 시트 전체를 DataFrame으로 반환 (캐시 없음 — 호출 쪽에서 관리)."""
+    """
+    갤러리 시트 전체를 DataFrame으로 반환.
+    같은 프로세스 내에서 동일 URL은 1회만 읽음 (429 방지).
+    """
+    if sheet_url in _df_cache:
+        return _df_cache[sheet_url]
+
     gc = _client()
-    sh = gc.open_by_url(sheet_url)
+    sh = _read_with_retry(gc.open_by_url, sheet_url)
     ws = sh.get_worksheet(0)
-    data = ws.get_all_values()
+    data = _read_with_retry(ws.get_all_values)
+
     if not data or len(data) < 2:
-        return pd.DataFrame(columns=_GALLERY_COLS)
+        df = pd.DataFrame(columns=_GALLERY_COLS)
+        _df_cache[sheet_url] = df
+        return df
+
     cols = _GALLERY_COLS[: len(data[0])]
     df = pd.DataFrame(data[1:], columns=cols)
     df = df[df["글번호"].astype(str).str.strip() != ""].copy()
@@ -77,7 +131,9 @@ def _gallery_df(sheet_url: str) -> pd.DataFrame:
             ).fillna(0).astype(int)
     if "날짜" in df.columns:
         df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
-    return df.reset_index(drop=True)
+    df = df.reset_index(drop=True)
+    _df_cache[sheet_url] = df
+    return df
 
 
 def get_posts_by_date(sheet_url: str, target_date: str) -> pd.DataFrame:
@@ -135,12 +191,12 @@ def get_daily_counts(sheet_url: str, target_date: str, lookback_days: int = 7) -
 
 def _analytics_sheet(sheet_name: str) -> pd.DataFrame:
     gc = _client()
-    sh = gc.open_by_key(os.environ["ANALYTICS_SPREADSHEET_ID"])
+    sh = _read_with_retry(gc.open_by_key, os.environ["ANALYTICS_SPREADSHEET_ID"])
     try:
         ws = sh.worksheet(sheet_name)
     except gspread.exceptions.WorksheetNotFound:
         return pd.DataFrame()
-    records = ws.get_all_records()
+    records = _read_with_retry(ws.get_all_records)
     return pd.DataFrame(records) if records else pd.DataFrame()
 
 

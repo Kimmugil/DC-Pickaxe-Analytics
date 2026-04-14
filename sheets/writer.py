@@ -34,15 +34,22 @@ _HEADERS = {
 }
 
 
+_gc: gspread.Client | None = None
+
+
 def _client() -> gspread.Client:
-    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if raw:
-        info = json.loads(raw)
-        creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
-    else:
-        path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-        creds = Credentials.from_service_account_file(path, scopes=_SCOPES)
-    return gspread.authorize(creds)
+    """모듈 레벨 싱글턴 gspread 클라이언트."""
+    global _gc
+    if _gc is None:
+        raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        if raw:
+            info = json.loads(raw)
+            creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
+        else:
+            path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+            creds = Credentials.from_service_account_file(path, scopes=_SCOPES)
+        _gc = gspread.authorize(creds)
+    return _gc
 
 
 def _spreadsheet() -> gspread.Spreadsheet:

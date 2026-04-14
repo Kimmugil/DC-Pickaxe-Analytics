@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -126,7 +127,9 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
                 "galleries": [], "overall_summary": ""}
 
     results = []
-    for g in galleries:
+    for i, g in enumerate(galleries):
+        if i > 0:
+            time.sleep(2)  # 갤러리 간 2초 딜레이 (429 방지)
         try:
             r = _analyze_gallery(g, week_start, week_end, verbose=verbose)
             if r is not None:

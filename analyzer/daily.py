@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -129,7 +130,9 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
         return []
 
     results = []
-    for g in galleries:
+    for i, g in enumerate(galleries):
+        if i > 0:
+            time.sleep(2)  # 갤러리 간 2초 딜레이 (429 방지)
         try:
             result = _analyze_gallery(g, target_date, verbose=verbose)
             results.append(result)
