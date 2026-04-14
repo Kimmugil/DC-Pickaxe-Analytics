@@ -360,9 +360,24 @@ def post_row_html(rank: int, title: str, url: str, comments: int, likes: int, vi
 
 
 def daily_count_bar_html(daily_counts: dict, avg: float | None = None) -> str:
-    """일별 게시글 수 미니 바 차트 (HTML)."""
+    """일별 게시글 수 미니 바 차트 (HTML).
+    저장된 dict에 빠진 날짜(0건)가 있어도 연속된 날짜로 자동 보간."""
     if not daily_counts:
         return ""
+    # 첫 날~마지막 날 사이 빠진 날짜 0으로 채우기
+    try:
+        from datetime import date as _d, timedelta as _td
+        _keys = sorted(daily_counts.keys())
+        _first = _d.fromisoformat(_keys[0])
+        _last  = _d.fromisoformat(_keys[-1])
+        _filled: dict[str, int] = {}
+        _cur = _first
+        while _cur <= _last:
+            _filled[str(_cur)] = daily_counts.get(str(_cur), 0)
+            _cur += _td(days=1)
+        daily_counts = _filled
+    except Exception:
+        pass
     items = sorted(daily_counts.items())
     max_val = max(v for _, v in items) if items else 1
     max_val = max(max_val, 1)

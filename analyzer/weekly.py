@@ -53,11 +53,20 @@ def _analyze_gallery(
     posts = df.to_dict("records") if not df.empty else []
     total = len(posts)
 
-    # 일별 게시글 수
+    # 일별 게시글 수 — 주간 전 날짜(7일) 0으로 초기화 후 실제값 덮어쓰기
+    # (게시글 없는 날도 막대 차트에 0으로 표시되도록)
+    from datetime import date as _date
+    _ws = datetime.strptime(week_start, "%Y-%m-%d").date()
+    _we = datetime.strptime(week_end,   "%Y-%m-%d").date()
     daily_counts: dict[str, int] = {}
+    _cur = _ws
+    while _cur <= _we:
+        daily_counts[str(_cur)] = 0
+        _cur += timedelta(days=1)
     if not df.empty and "날짜" in df.columns:
-        counts_s = df.groupby(df["날짜"].dt.date).size()
-        daily_counts = {str(d): int(c) for d, c in counts_s.items()}
+        for _d, _c in df.groupby(df["날짜"].dt.date).size().items():
+            if str(_d) in daily_counts:
+                daily_counts[str(_d)] = int(_c)
 
     keywords = kw_mod.extract(posts, top_n=10)
     top5     = _top_posts(posts, n=5)
