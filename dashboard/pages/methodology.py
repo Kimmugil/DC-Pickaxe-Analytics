@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(
-    page_title="분석 방법 — DC-Pickaxe",
+    page_title="분석 방법 — 디씨곡괭이 정련소",
     page_icon="📖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -32,7 +32,7 @@ st.markdown(
     f'letter-spacing:-0.03em;margin-bottom:2px;">📖 분석 방법</h1>',
     unsafe_allow_html=True,
 )
-st.caption("DC-Pickaxe Analytics 데이터 수집 · 분석 기준 · 이슈 판별 방식 안내")
+st.caption("디씨곡괭이 정련소 데이터 수집 · 분석 기준 · 이슈 판별 방식 안내")
 st.divider()
 
 
@@ -139,7 +139,7 @@ st.divider()
 # 3. 일간 이슈 분석
 # ════════════════════════════════════════════════════════════════════
 st.markdown(
-    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">📌 일간 이슈 분석</div>',
+    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">📌 일간 체크포인트 분석</div>',
     unsafe_allow_html=True,
 )
 
@@ -330,7 +330,7 @@ col_a1, col_a2 = st.columns(2)
 with col_a1:
     with st.container(border=True):
         st.markdown(
-            f'<div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};margin-bottom:8px;">일간 이슈 AI 요약</div>',
+            f'<div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};margin-bottom:8px;">일간 체크포인트 AI 요약</div>',
             unsafe_allow_html=True,
         )
         st.markdown(
@@ -410,7 +410,7 @@ schedule_html = f"""
   <div style="flex:1;min-width:160px;background:#F8FAFC;border:1px solid {C_BORDER};
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
-                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📌 일간 분석</div>
+                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📌 일간 체크포인트</div>
     <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매일 오전 9시 KST</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
       전일 게시글 이슈 점수 산출<br>이슈 갤러리 AI 요약 생성

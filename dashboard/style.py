@@ -270,14 +270,14 @@ def render_sidebar_nav() -> None:
     with st.sidebar:
         st.markdown(
             f'<div style="font-size:1.05rem;font-weight:700;color:{C_TITLE};padding:2px 0 4px;">'
-            f'⛏️ DC-Pickaxe Analytics</div>',
+            f'⛏️ 디씨곡괭이 정련소</div>',
             unsafe_allow_html=True,
         )
         st.caption("키우기 갤러리 동향 분석")
         st.divider()
         st.page_link("app.py",               label="🏠  홈",           use_container_width=True)
         st.page_link("pages/weekly.py",       label="📅  주간 리포트",  use_container_width=True)
-        st.page_link("pages/daily.py",        label="📌  일간 이슈",    use_container_width=True)
+        st.page_link("pages/daily.py",        label="📌  일간 체크포인트", use_container_width=True)
         st.page_link("pages/methodology.py",  label="📖  분석 방법",    use_container_width=True)
         st.divider()
         st.link_button("⛏️ 곡괭이 감시하러 가기", "https://kimmugil-dc-pickaxe-dashboard.streamlit.app/", use_container_width=True)
