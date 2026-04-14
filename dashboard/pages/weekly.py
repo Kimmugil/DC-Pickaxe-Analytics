@@ -1,5 +1,9 @@
 """
-DC-Pickaxe Analytics — 주간 리포트 상세
+DC-Pickaxe Analytics — 주간 리포트
+
+구성:
+  - 목록 화면: 발행된 주간 리포트 카드 목록
+  - 상세 화면: 선택한 주의 갤러리별 분석 + AI 종합 요약
 """
 
 import sys
@@ -41,32 +45,94 @@ def load_weekly(week_start: str):
     return get_weekly_galleries(week_start), get_weekly_overall(week_start)
 
 
-# ── 주 선택 ──────────────────────────────────────────────────────────
+# ── 페이지 헤더 ──────────────────────────────────────────────────────
+st.markdown(
+    f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
+    f'letter-spacing:-0.03em;margin-bottom:2px;">📅 주간 리포트</h1>',
+    unsafe_allow_html=True,
+)
+
 weeks = load_week_list()
 
 if not weeks:
-    st.markdown(
-        f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};">📅 주간 리포트</h1>',
-        unsafe_allow_html=True,
-    )
     st.info("아직 주간 리포트가 없습니다. 분석 봇이 실행된 후 확인해주세요.")
     st.stop()
 
-default_week = st.session_state.get("weekly_week_start", weeks[0])
-default_idx  = weeks.index(default_week) if default_week in weeks else 0
 
-with st.sidebar:
-    selected_week = st.selectbox(
-        "주간 선택",
-        options=weeks,
-        index=default_idx,
-        key="sel_week",
-    )
-    st.session_state["weekly_week_start"] = selected_week
-    st.caption("최신순 목록")
+# ── 목록 vs 상세 라우팅 ──────────────────────────────────────────────
+# session_state로 선택된 주 관리
+# app.py 홈에서 넘어올 때는 "weekly_week_start" 키 사용
+_from_home = st.session_state.pop("weekly_week_start", None)
+if _from_home and _from_home in weeks:
+    st.session_state["weekly_selected_week"] = _from_home
+
+selected_week = st.session_state.get("weekly_selected_week", None)
 
 
-# ── 데이터 ───────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# 목록 화면
+# ════════════════════════════════════════════════════════════════════
+if selected_week is None:
+    st.caption(f"총 {len(weeks)}건의 주간 리포트 · 주간 10건 미만 갤러리는 AI 요약 제외")
+    st.divider()
+
+    for week_start in weeks:
+        try:
+            gdf, overall = load_weekly(week_start)
+            if gdf.empty:
+                gallery_count = 0
+                week_end      = ""
+                total_posts   = 0
+                has_summary   = False
+            else:
+                recs        = gdf.to_dict("records")
+                gallery_count = len(recs)
+                week_end    = str(recs[0].get("week_end", "")) if recs else ""
+                total_posts = sum(int(r.get("total_posts", 0) or 0) for r in recs)
+                has_summary = bool(overall and overall.get("ai_summary"))
+        except Exception:
+            gallery_count = 0
+            week_end      = ""
+            total_posts   = 0
+            has_summary   = False
+
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([3, 4, 1])
+            with c1:
+                st.markdown(
+                    f'<div style="font-size:1.05rem;font-weight:700;color:{C_TITLE};">'
+                    f'{week_start} ~ {week_end}</div>',
+                    unsafe_allow_html=True,
+                )
+            with c2:
+                ai_badge = (
+                    f'&nbsp;<span style="font-size:0.72rem;background:#EEF2FF;'
+                    f'color:#4F46E5;border-radius:4px;padding:1px 6px;font-weight:600;">AI 요약</span>'
+                    if has_summary else ""
+                )
+                st.markdown(
+                    f'<div style="font-size:0.88rem;color:{C_MUTED};padding:4px 0;">'
+                    f'갤러리 <b style="color:{C_HEADING};">{gallery_count}개</b>'
+                    f' &nbsp;·&nbsp; 주간 총 <b style="color:{C_HEADING};">{total_posts:,}건</b>'
+                    f'{ai_badge}</div>',
+                    unsafe_allow_html=True,
+                )
+            with c3:
+                if st.button("보기 →", key=f"view_{week_start}", use_container_width=True):
+                    st.session_state["weekly_selected_week"] = week_start
+                    st.rerun()
+
+    st.stop()
+
+
+# ════════════════════════════════════════════════════════════════════
+# 상세 화면
+# ════════════════════════════════════════════════════════════════════
+if st.button("← 목록으로", key="back_to_list"):
+    del st.session_state["weekly_selected_week"]
+    st.rerun()
+
+# ── 데이터 로드 ──────────────────────────────────────────────────────
 try:
     galleries_df, overall = load_weekly(selected_week)
 except Exception as e:
@@ -85,16 +151,13 @@ records  = sorted(
 )
 week_end = str(records[0].get("week_end", "")) if records else ""
 
-
-# ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
-    f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
-    f'letter-spacing:-0.03em;margin-bottom:2px;">📅 주간 리포트</h1>',
+    f'<div style="font-size:1.05rem;font-weight:600;color:{C_HEADING};margin:4px 0 2px;">'
+    f'{selected_week} ~ {week_end}</div>',
     unsafe_allow_html=True,
 )
 st.caption(
-    f"{selected_week} ~ {week_end} · 갤러리 {len(records)}개"
-    f" · 주간 10건 미만 갤러리는 AI 요약 제외"
+    f"갤러리 {len(records)}개 · 주간 10건 미만 갤러리는 AI 요약 제외"
 )
 st.divider()
 
