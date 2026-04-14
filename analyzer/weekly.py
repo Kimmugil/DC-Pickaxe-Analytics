@@ -58,6 +58,11 @@ def _analyze_gallery(
         counts_s = df.groupby(df["날짜"].dt.date).size()
         daily_counts = {str(d): int(c) for d, c in counts_s.items()}
 
+    if total < 10:
+        if verbose:
+            print(f"  {gallery['gallery_name']}: {total}건 (10건 미만 — 제외)")
+        return None
+
     keywords = kw_mod.extract(posts, top_n=10)
     top5     = _top_posts(posts, n=5)
 
@@ -124,7 +129,8 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
     for g in galleries:
         try:
             r = _analyze_gallery(g, week_start, week_end, verbose=verbose)
-            results.append(r)
+            if r is not None:
+                results.append(r)
         except Exception as e:
             print(f"  ❌ {g['gallery_name']} 분석 실패: {e}")
             results.append({
