@@ -30,8 +30,9 @@ def _engagement(post: dict) -> float:
     return comments * 3 + likes * 2 + views * 0.05
 
 
-def _top_posts(posts: list[dict], n: int = 5) -> list[dict]:
-    scored = sorted(posts, key=_engagement, reverse=True)
+def _issue_posts(posts: list[dict], n: int = 5) -> list[dict]:
+    """댓글 수 기준 정렬 — 가장 많이 논의된 = 이슈를 일으킨 게시글."""
+    scored = sorted(posts, key=lambda p: int(p.get("댓글수", 0) or 0), reverse=True)
     result = []
     for p in scored[:n]:
         result.append({
@@ -41,7 +42,6 @@ def _top_posts(posts: list[dict], n: int = 5) -> list[dict]:
             "댓글수": int(p.get("댓글수", 0) or 0),
             "추천수": int(p.get("추천수", 0) or 0),
             "조회수": int(p.get("조회수", 0) or 0),
-            "score":  round(_engagement(p), 1),
         })
     return result
 
@@ -98,7 +98,7 @@ def _analyze_gallery(
     issue_score = _calc_issue_score(posts_today, count_today, avg_7d)
     has_issue   = issue_score >= ISSUE_THRESHOLD
     keywords    = kw_mod.extract(posts_today, top_n=10)
-    top5        = _top_posts(posts_today, n=5)
+    top5        = _issue_posts(posts_today, n=5)
 
     if verbose:
         flag = "이슈" if has_issue else "정상"
