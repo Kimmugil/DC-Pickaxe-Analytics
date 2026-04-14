@@ -14,12 +14,100 @@ Rate-limit 대응:
 
 import os
 import json
+import re
 import time
 from datetime import datetime, timedelta
 
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
+
+# ── DC Inside / Google Sheets 날짜 파싱 ──────────────────────────────
+# DC Inside 날짜 표시 규칙:
+#   당일 게시글  → "03:11"            (HH:MM, 날짜 없음)
+#   당해연도 게시글 → "04.10"         (MM.DD, 연도 없음)
+#   이전 연도   → "2025.04.10"        (YYYY.MM.DD)
+# Google Sheets가 날짜셀을 FORMATTED_VALUE로 반환할 때 한국 로케일 형식:
+#   날짜만      → "2026. 4. 10."
+#   날짜+시간   → "2026. 4. 10. 오전 3:11:00" / "오후 1:19:00"
+
+_RE_TIME_ONLY = re.compile(r"^(\d{1,2}):(\d{2})(?::\d{2})?$")
+_RE_KO_DT    = re.compile(
+    r"(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?"
+    r"(?:\s*(오전|오후)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?"
+)
+_RE_DOT_FULL = re.compile(r"^(\d{4})\.(\d{1,2})\.(\d{1,2})\.?$")
+_RE_DOT_MD   = re.compile(r"^(\d{1,2})\.(\d{2})$")   # MM.DD
+
+
+def _parse_dc_date(s: str) -> pd.Timestamp:
+    """
+    DC Inside / Google Sheets 게시글 날짜 필드 파싱.
+    파싱 불가능한 값(HH:MM 시간만 등)은 pd.NaT 반환.
+    """
+    if not s or not str(s).strip() or str(s).lower() in ("nan", "none", ""):
+        return pd.NaT
+    s = str(s).strip()
+
+    # ① ISO 표준 포맷: "2026-04-10" / "2026-04-10 03:11" → pandas 기본 처리
+    result = pd.to_datetime(s, errors="coerce")
+    if result is not pd.NaT and not pd.isna(result):
+        return result
+
+    # ② 한국 Google Sheets 로케일: "2026. 4. 10." / "2026. 4. 10. 오전 3:11:00"
+    m = _RE_KO_DT.fullmatch(s) or _RE_KO_DT.match(s)
+    if m and m.group(1):
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            if m.group(4):          # 오전/오후 시각 포함
+                ampm = m.group(4)
+                h  = int(m.group(5))
+                mi = int(m.group(6))
+                sc = int(m.group(7) or 0)
+                if ampm == "오후" and h < 12:
+                    h += 12
+                elif ampm == "오전" and h == 12:
+                    h = 0
+                return pd.Timestamp(year=y, month=mo, day=d, hour=h, minute=mi, second=sc)
+            return pd.Timestamp(year=y, month=mo, day=d)
+        except Exception:
+            pass
+
+    # ③ DC Inside 점(.) 날짜: "2026.04.10"
+    m = _RE_DOT_FULL.match(s)
+    if m:
+        result = pd.to_datetime(f"{m.group(1)}-{m.group(2)}-{m.group(3)}", errors="coerce")
+        if not pd.isna(result):
+            return result
+
+    # ④ DC Inside 월.일: "04.10" (연도는 현재 연도로 보정)
+    m = _RE_DOT_MD.match(s)
+    if m:
+        try:
+            return pd.Timestamp(
+                year=datetime.now().year,
+                month=int(m.group(1)),
+                day=int(m.group(2)),
+            )
+        except Exception:
+            pass
+
+    # ⑤ HH:MM (시간만, 날짜 불명) → NaT (호출 쪽에서 ffill로 보정)
+    return pd.NaT
+
+
+def _parse_date_column(series: pd.Series) -> pd.Series:
+    """
+    날짜 컬럼 전체 파싱.
+    HH:MM만 있는 당일 게시글은 인접 행 날짜로 ffill → bfill 보정.
+    """
+    parsed = series.apply(lambda v: _parse_dc_date(str(v)))
+
+    if parsed.isna().any():
+        # HH:MM 행 → 앞뒤 날짜로 날짜 추론 (시간은 00:00으로 대체)
+        parsed = parsed.ffill().bfill()
+
+    return parsed
 
 _SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -130,7 +218,7 @@ def _gallery_df(sheet_url: str) -> pd.DataFrame:
                 df[c].astype(str).str.replace(",", ""), errors="coerce"
             ).fillna(0).astype(int)
     if "날짜" in df.columns:
-        df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
+        df["날짜"] = _parse_date_column(df["날짜"])
     df = df.reset_index(drop=True)
     _df_cache[sheet_url] = df
     return df
