@@ -59,16 +59,12 @@ def _analyze_gallery(
         counts_s = df.groupby(df["날짜"].dt.date).size()
         daily_counts = {str(d): int(c) for d, c in counts_s.items()}
 
-    if total < 10:
-        if verbose:
-            print(f"  {gallery['gallery_name']}: {total}건 (10건 미만 — 제외)")
-        return None
-
     keywords = kw_mod.extract(posts, top_n=10)
     top5     = _top_posts(posts, n=5)
 
     if verbose:
-        print(f"  {gallery['gallery_name']}: {total}건")
+        tag = " (저활동 — AI 요약 제외)" if total < 10 else ""
+        print(f"  {gallery['gallery_name']}: {total}건{tag}")
 
     return {
         "gallery_id":   gallery["gallery_id"],
@@ -132,8 +128,7 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
             time.sleep(2)  # 갤러리 간 2초 딜레이 (429 방지)
         try:
             r = _analyze_gallery(g, week_start, week_end, verbose=verbose)
-            if r is not None:
-                results.append(r)
+            results.append(r)
         except Exception as e:
             print(f"  ❌ {g['gallery_name']} 분석 실패: {e}")
             results.append({
@@ -146,12 +141,14 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
                 "ai_summary":   "",
             })
 
-    # 갤러리별 AI 요약
+    # 갤러리별 AI 요약 (10건 미만은 제외)
     if verbose:
         print("\n[AI 요약] 갤러리별 주간 요약 생성 중...")
     for r in results:
-        if r["total_posts"] < 3:
-            r["ai_summary"] = "(게시글 부족 — 요약 생략)"
+        if r["total_posts"] < 10:
+            r["ai_summary"] = "(주간 게시글 10건 미만 — AI 요약 제외)"
+            if verbose:
+                print(f"  ⏭️  {r['gallery_name']}: 10건 미만, 요약 제외")
             continue
         try:
             r["ai_summary"] = summarize_weekly_gallery(

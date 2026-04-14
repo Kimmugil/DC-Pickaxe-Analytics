@@ -138,6 +138,14 @@ if weekly_meta:
         f'📅 최신 주간 리포트 — {ws} ~ {we}</div>',
         unsafe_allow_html=True,
     )
+    st.markdown(
+        f'<div style="font-size:0.76rem;color:{C_MUTED};margin-bottom:10px;line-height:1.6;">'
+        f'주간 게시글 수가 10건 미만인 갤러리는 AI 요약에서 제외됩니다. '
+        f'전체 갤러리의 주간 현황 확인은 '
+        f'<a href="/weekly" target="_self" style="color:{C_ACCENT};text-decoration:none;font-weight:600;">'
+        f'주간 리포트</a>를 확인해 주세요.</div>',
+        unsafe_allow_html=True,
+    )
 
     try:
         galleries_df, overall = load_latest_weekly_galleries(ws)

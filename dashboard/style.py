@@ -212,10 +212,42 @@ hr { border-color: #E2E8F0 !important; }
     font-size: 0.88rem !important;
 }
 
-/* ── border 컨테이너 내부 패딩 ───────────────────────────────── */
-/* st.container(border=True) 안쪽 여백 확보 */
+/* ══════════════════════════════════════════════════════════════
+   PADDING FIX — border 컨테이너 내부 여백
+
+   문제: Streamlit st.columns()는 내부적으로 stHorizontalBlock에
+         negative margin(-1rem 등)을 사용해 그리드 정렬을 맞춤.
+         이 negative margin이 외부 컨테이너 padding을 상쇄해서
+         텍스트가 테두리에 붙어 보임.
+
+   해결: border wrapper 자체에 padding 대신
+         wrapper 안의 직접 자식 vertical block에 padding 적용.
+         horizontal block의 negative margin을 0으로 리셋.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. border wrapper 자체는 padding 없이 */
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 1.5rem 1.75rem !important;
+    padding: 0 !important;
+}
+
+/* 2. wrapper 바로 안쪽 content block에 padding 적용 */
+div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+    padding: 1.25rem 1.5rem !important;
+}
+
+/* 3. 내부 컬럼 블록의 negative margin 제거 (padding 상쇄 방지) */
+div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    gap: 0.75rem !important;
+}
+
+/* 4. expander 내용 영역 패딩 */
+div[data-testid="stExpander"] details > div {
+    padding: 0.75rem 1.25rem !important;
+}
+div[data-testid="stExpander"] details summary {
+    padding: 0.6rem 0.75rem !important;
 }
 
 /* ── 메트릭 레이블 일관성 ─────────────────────────────────────── */
@@ -232,12 +264,6 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     letter-spacing: -0.02em !important;
     color: #0F172A !important;
     line-height: 1.2 !important;
-}
-
-/* ── 캡션 일관성 ──────────────────────────────────────────────── */
-small, .st-emotion-cache-1y4p8pa p {
-    font-size: 0.78rem !important;
-    color: #64748B !important;
 }
 </style>
 """

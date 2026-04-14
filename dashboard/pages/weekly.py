@@ -92,7 +92,10 @@ st.markdown(
     f'letter-spacing:-0.03em;margin-bottom:2px;">📅 주간 리포트</h1>',
     unsafe_allow_html=True,
 )
-st.caption(f"{selected_week} ~ {week_end} · 갤러리 {len(records)}개")
+st.caption(
+    f"{selected_week} ~ {week_end} · 갤러리 {len(records)}개"
+    f" · 주간 10건 미만 갤러리는 AI 요약 제외"
+)
 st.divider()
 
 
