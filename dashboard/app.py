@@ -1,307 +1,190 @@
 """
-DC-Pickaxe Analytics — 홈 v10
+DC-Pickaxe Analytics — 홈
+
 구성:
-  - 통계 카드 (디씨곡괭이 감시탑 스타일)
-  - 최신 AI 주간 요약 (확장, 헤딩 크기 축소)
-  - 최신 일간 이슈 요약 (이슈 있을 때만)
-  - 리포트 캘린더 (발행 주기 안내 포함)
-  - 분석 방법론 (expander)
+  - 최근 주간 리포트 발행일 + 이동 버튼
+  - 최근 일간 이슈 발행일 + 이동 버튼
+  - 최신 주간 리포트 갤러리 카드 미리보기 (5개)
 """
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import calendar
+import json
 import streamlit as st
-from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(
-    page_title='DC-Pickaxe Analytics',
-    page_icon='⛏️',
-    layout='wide',
-    initial_sidebar_state='expanded',
+    page_title="DC-Pickaxe Analytics",
+    page_icon="⛏️",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-from dashboard.dash_styles import (
-    inject_css, render_sidebar_nav, shrink_headings,
-    METHODOLOGY_DAILY_TEMPLATE, METHODOLOGY_WEEKLY_TEMPLATE,
+from dashboard.style import (
+    inject_css, render_sidebar_nav,
+    gallery_color, label_html, kw_tag_html, ai_block_html,
+    C_TITLE, C_HEADING, C_BODY, C_MUTED, C_LABEL, C_BORDER, C_ACCENT,
+    C_ISSUE_H, C_ISSUE_M, C_ISSUE_L, C_GREEN,
 )
 inject_css()
-
-# ── 캘린더 클릭 네비게이션 ──────────────────────────────────────────
-params = st.query_params
-if 'nav_date' in params:
-    nav_date = params['nav_date']
-    nav_type = params.get('nav_type', 'daily')
-    st.session_state['report_date'] = nav_date
-    if nav_type == 'weekly':
-        st.session_state['report_week_start'] = nav_date
-        st.switch_page('pages/_주간_리포트.py')
-    else:
-        st.switch_page('pages/_일간_리포트.py')
-
-
-# ── 데이터 로드 ──────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
-def load_overall_stats():
-    from sheets.reader import get_latest_overall_stats
-    return get_latest_overall_stats()
-
-
-@st.cache_data(ttl=300)
-def load_latest_weekly():
-    from sheets.reader import get_latest_weekly_summary
-    return get_latest_weekly_summary()
-
-
-@st.cache_data(ttl=300)
-def load_daily_index():
-    from sheets.reader import get_daily_report_index
-    return get_daily_report_index()
-
-
-@st.cache_data(ttl=300)
-def load_calendar_data():
-    from sheets.reader import get_calendar_data
-    return get_calendar_data()
-
-
-def _relative_date(date_str: str) -> str:
-    try:
-        d    = date.fromisoformat(date_str)
-        diff = (date.today() - d).days
-        if diff == 0:
-            return '오늘'
-        elif diff == 1:
-            return '어제'
-        else:
-            return f'{diff}일 전'
-    except Exception:
-        return date_str
-
-
-def _calendar_html(year: int, month: int, cal_data: dict, today: date) -> str:
-    cal_obj    = calendar.monthcalendar(year, month)
-    month_name = f"{year}년 {month}월"
-    dow_headers = ''.join(
-        f'<div style="text-align:center;font-size:0.7rem;font-weight:700;color:#94A3B8;padding:4px 0;">{d}</div>'
-        for d in ['월', '화', '수', '목', '금', '토', '일']
-    )
-    cells = []
-    for week in cal_obj:
-        for day in week:
-            if day == 0:
-                cells.append('<div></div>')
-                continue
-            d           = date(year, month, day)
-            d_str       = d.strftime('%Y-%m-%d')
-            is_today    = d == today
-            report_type = cal_data.get(d_str)
-            today_style = 'outline:2px solid #E8A020;outline-offset:-2px;' if is_today else ''
-            if report_type:
-                if report_type == 'both':
-                    badge_tx, nav_type, badge_bg = '주+일', 'weekly', '#E8A020'
-                elif report_type == 'weekly':
-                    badge_tx, nav_type, badge_bg = '주', 'weekly', '#E8A020'
-                else:
-                    badge_tx, nav_type, badge_bg = '일', 'daily', '#475569'
-                badge = (
-                    f'<span style="font-size:0.55rem;font-weight:700;padding:1px 4px;'
-                    f'border-radius:3px;margin-top:2px;background:{badge_bg};color:white;">'
-                    f'{badge_tx}</span>'
-                )
-                cells.append(
-                    f'<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;'
-                    f'justify-content:center;border-radius:8px;background:#FEF3C7;min-height:34px;{today_style}">'
-                    f'<a href="?nav_date={d_str}&nav_type={nav_type}" '
-                    f'style="text-decoration:none;color:#0F172A;font-weight:700;font-size:0.82rem;'
-                    f'display:flex;flex-direction:column;align-items:center;justify-content:center;'
-                    f'width:100%;height:100%;">{day}{badge}</a></div>'
-                )
-            else:
-                cells.append(
-                    f'<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;'
-                    f'border-radius:8px;font-size:0.82rem;color:#475569;min-height:34px;{today_style}">{day}</div>'
-                )
-    grid = ''.join(cells)
-    return (
-        f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;'
-        f'padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(15,23,42,.05);">'
-        f'<div style="font-size:0.9rem;font-weight:700;color:#0F172A;margin-bottom:10px;">{month_name}</div>'
-        f'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">'
-        f'{dow_headers}{grid}</div></div>'
-    )
-
-
-# ── 사이드바 ─────────────────────────────────────────────────────────
 render_sidebar_nav()
 
-with st.sidebar:
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    st.caption(f'오늘: **{today_str}**')
-    run_btn = st.button('분석 실행 (오늘)', use_container_width=True, key='btn_run_daily')
-    if run_btn:
-        from dashboard.analysis_runner import run_analysis_now
-        with st.spinner(f'분석 중... ({today_str})'):
-            success, output = run_analysis_now(today_str)
-        if success:
-            st.cache_data.clear()
-            st.success('완료!')
-            st.rerun()
-        else:
-            st.error('분석 실패')
-            with st.expander('오류 로그'):
-                st.code(output[:3000])
-    st.divider()
-    st.caption('DC-Pickaxe Analytics v10')
-
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────
-today = date.today()
-try:
-    overall = load_overall_stats()
-except Exception:
-    overall = {}
-try:
-    daily_idx = load_daily_index()
-except Exception:
-    daily_idx = []
+@st.cache_data(ttl=300)
+def load_home_data():
+    from sheets.reader import get_latest_weekly_info, get_latest_daily_issue_info
+    weekly = get_latest_weekly_info()
+    daily  = get_latest_daily_issue_info()
+    return weekly, daily
 
 
-# ── 페이지 타이틀 ─────────────────────────────────────────────────────
-st.title('⛏️ DC-Pickaxe Analytics')
-st.caption('키우기 장르 갤러리 자동 분석 대시보드')
+@st.cache_data(ttl=300)
+def load_latest_weekly_galleries(week_start: str):
+    from sheets.reader import get_weekly_galleries, get_weekly_overall
+    galleries = get_weekly_galleries(week_start)
+    overall   = get_weekly_overall(week_start)
+    return galleries, overall
 
-st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 
-# ── 통계 카드 ─────────────────────────────────────────────────────────
-last_date   = overall.get('date', '-')
-total_posts = overall.get('total_posts', 0)
-new_today   = overall.get('new_posts_today', 0)
-rel_time    = _relative_date(last_date)
+weekly_meta, daily_meta = load_home_data()
 
-k1, k2, k3 = st.columns(3)
-with k1:
-    st.metric('총 수집 게시글', f'{total_posts:,}건',
-              help='전체 갤러리 누적 수집 합산')
-with k2:
-    st.metric('24H 신규 수집', f'{new_today:,}건',
-              help=f'{last_date} 00:00~23:59 수집량')
-with k3:
-    st.metric('마지막 분석', rel_time,
-              help=f'분석 기준일: {last_date}')
 
-st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
-st.link_button(
-    '🔗 디씨곡괭이 감시탑 바로가기',
-    'https://kimmugil-dc-pickaxe-dashboard.streamlit.app/',
-    use_container_width=False,
-)
-
-st.divider()
-
-# ── 최신 AI 주간 요약 (EXPANDED) ─────────────────────────────────────
-try:
-    latest_weekly = load_latest_weekly()
-    if latest_weekly:
-        ws_date = latest_weekly.get('week_start', '')
-        we_date = latest_weekly.get('week_end', '')
-        txt     = str(latest_weekly.get('ai_weekly_summary', ''))
-        st.subheader('최신 AI 주간 요약')
-        st.caption(f'분석 기간: **{ws_date} ~ {we_date}** · Gemini 2.5 Flash 생성')
-        if txt and not txt.startswith('>'):
-            with st.container(border=True):
-                st.markdown(shrink_headings(txt))
-        else:
-            st.info('주간 요약 데이터가 없습니다.')
-    else:
-        st.info('주간 요약 데이터가 없습니다.')
-except Exception:
-    st.info('주간 요약 데이터를 불러올 수 없습니다.')
-
-st.divider()
-
-# ── 최신 일간 이슈 요약 (이슈 있을 때만) ─────────────────────────────
-try:
-    issue_items = [item for item in daily_idx if item.get('issue_count', 0) > 0]
-    if issue_items:
-        latest_issue = issue_items[0]
-        d_str = latest_issue['date']
-        ic    = latest_issue['issue_count']
-        st.subheader('최신 일간 이슈 요약')
-        st.caption(
-            f'기준일: **{d_str}** · 이슈 감지 갤러리: **{ic}개** · '
-            f'일간 리포트는 이슈 감지 시에만 발행됩니다.'
-        )
-        try:
-            from sheets.reader import get_analysis_results
-            df = get_analysis_results(date=d_str)
-            if not df.empty:
-                records = df.to_dict('records')
-                issues  = sorted(
-                    [r for r in records if str(r.get('has_issue', '0')) == '1'],
-                    key=lambda r: int(r.get('issue_score', 0)),
-                    reverse=True,
-                )
-                if issues:
-                    with st.container(border=True):
-                        for r in issues:
-                            name  = r.get('gallery_name', '')
-                            score = r.get('issue_score', 0)
-                            ai_t  = str(r.get('ai_summary', ''))
-                            from dashboard.dash_styles import sev_badge_html, shrink_headings
-                            col_n, col_b = st.columns([3, 1])
-                            with col_n:
-                                st.markdown(f'**{name}**')
-                            with col_b:
-                                st.markdown(sev_badge_html(int(score)), unsafe_allow_html=True)
-                            if ai_t and not ai_t.startswith('[AI 생성 실패') and not ai_t.startswith('>'):
-                                st.markdown(shrink_headings(ai_t))
-                            st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
-        except Exception:
-            pass
-        st.divider()
-except Exception:
-    pass
-
-# ── 리포트 캘린더 ─────────────────────────────────────────────────────
-st.subheader('📅 리포트 캘린더')
+# ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
-    '<div style="background:#F1F5F9;border-radius:10px;padding:10px 14px;'
-    'font-size:0.83rem;color:#475569;margin-bottom:12px;line-height:1.6;">'
-    '📊&nbsp;<b>주간 리포트</b>: 매주 <b>월요일</b> 정기 발행&nbsp;&nbsp;·&nbsp;&nbsp;'
-    '📋&nbsp;<b>일간 리포트</b>: 이슈 감지 시에만 발행 (특이 동향 없으면 미발행)'
-    '</div>',
+    f'<h1 style="font-size:1.65rem;font-weight:700;color:{C_TITLE};'
+    f'letter-spacing:-0.03em;margin-bottom:2px;">⛏️ DC-Pickaxe Analytics</h1>',
     unsafe_allow_html=True,
 )
+st.caption("키우기 장르 갤러리 동향 분석 대시보드")
+st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
 
-try:
-    cal_data = load_calendar_data()
-except Exception:
-    cal_data = {}
+# ── 최근 리포트 현황 카드 ────────────────────────────────────────────
+col_w, col_d = st.columns(2)
 
-prev_month_date = today.replace(day=1) - timedelta(days=1)
-prev_y, prev_m  = prev_month_date.year, prev_month_date.month
-curr_y, curr_m  = today.year, today.month
+with col_w:
+    with st.container(border=True):
+        st.markdown(label_html("최근 주간 리포트"), unsafe_allow_html=True)
+        if weekly_meta:
+            ws = weekly_meta["week_start"]
+            we = weekly_meta["week_end"]
+            st.markdown(
+                f'<div style="font-size:1.35rem;font-weight:700;color:{C_TITLE};'
+                f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 2px;">'
+                f'{ws} ~ {we}</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("주간 리포트 보기 →", key="btn_weekly", use_container_width=True):
+                st.session_state["weekly_week_start"] = ws
+                st.switch_page("pages/weekly.py")
+        else:
+            st.markdown(
+                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">아직 주간 리포트가 없습니다.</div>',
+                unsafe_allow_html=True,
+            )
 
-col_prev, col_curr = st.columns(2)
-with col_prev:
-    st.markdown(_calendar_html(prev_y, prev_m, cal_data, today), unsafe_allow_html=True)
-with col_curr:
-    st.markdown(_calendar_html(curr_y, curr_m, cal_data, today), unsafe_allow_html=True)
+with col_d:
+    with st.container(border=True):
+        st.markdown(label_html("최근 일간 이슈 리포트"), unsafe_allow_html=True)
+        if daily_meta:
+            date_str = daily_meta["date"]
+            cnt      = daily_meta["issue_gallery_count"]
+            st.markdown(
+                f'<div style="font-size:1.35rem;font-weight:700;color:{C_TITLE};'
+                f'letter-spacing:-0.02em;line-height:1.2;margin:4px 0 2px;">'
+                f'{date_str}</div>',
+                unsafe_allow_html=True,
+            )
+            st.caption(f"이슈 감지 갤러리 {cnt}개")
+            if st.button("일간 이슈 보기 →", key="btn_daily", use_container_width=True):
+                st.session_state["daily_date"] = date_str
+                st.switch_page("pages/daily.py")
+        else:
+            st.markdown(
+                f'<div style="font-size:0.88rem;color:{C_MUTED};padding:8px 0;">최근 이슈 리포트가 없습니다.</div>',
+                unsafe_allow_html=True,
+            )
 
-# ── 분석 방법론 ───────────────────────────────────────────────────────
 st.divider()
-with st.expander('🔍 분석 방법론', expanded=False):
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        st.markdown('**📋 일간 이슈 리포트 방법론**')
-        st.markdown(METHODOLOGY_DAILY_TEMPLATE.format(date='(해당 분석일)'))
-    with col_m2:
-        st.markdown('**📊 주간 분석 리포트 방법론**')
-        st.markdown(METHODOLOGY_WEEKLY_TEMPLATE.format(
-            week_start='(주 시작일)',
-            week_end='(주 종료일)',
-        ))
+
+# ── 최신 주간 리포트 미리보기 ────────────────────────────────────────
+if weekly_meta:
+    ws = weekly_meta["week_start"]
+    we = weekly_meta["week_end"]
+    st.markdown(
+        f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:4px;">'
+        f'📅 최신 주간 리포트 — {ws} ~ {we}</div>',
+        unsafe_allow_html=True,
+    )
+
+    try:
+        galleries_df, overall = load_latest_weekly_galleries(ws)
+
+        # 전체 AI 요약
+        if overall and overall.get("ai_summary"):
+            summary = str(overall["ai_summary"])
+            with st.expander("✦ AI 종합 요약 보기", expanded=True):
+                st.markdown(
+                    f'<div style="font-size:0.88rem;color:{C_BODY};line-height:1.75;">{summary}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        # 갤러리 카드 2열
+        if not galleries_df.empty:
+            records = galleries_df.to_dict("records")
+            pairs   = [records[i:i+2] for i in range(0, len(records), 2)]
+            for pair in pairs:
+                cols = st.columns(2)
+                for col, r in zip(cols, pair):
+                    with col:
+                        name    = str(r.get("gallery_name", ""))
+                        total   = int(r.get("total_posts", 0) or 0)
+                        idx     = records.index(r)
+                        color   = gallery_color(idx)
+
+                        kw_raw  = r.get("keywords", "[]")
+                        kws     = json.loads(kw_raw) if isinstance(kw_raw, str) else (kw_raw or [])
+
+                        ai_text = str(r.get("ai_summary", "") or "")
+
+                        st.markdown(
+                            f'<div style="height:4px;background:{color};border-radius:3px;margin-bottom:2px;"></div>',
+                            unsafe_allow_html=True,
+                        )
+                        with st.container(border=True):
+                            # 갤러리명 + 게시글 수
+                            hc1, hc2 = st.columns([3, 1])
+                            with hc1:
+                                st.markdown(
+                                    f'<div style="font-size:0.95rem;font-weight:700;color:{C_HEADING};">{name}</div>',
+                                    unsafe_allow_html=True,
+                                )
+                            with hc2:
+                                st.metric("게시글", f"{total:,}건")
+
+                            # 키워드
+                            if kws:
+                                tags = "".join(kw_tag_html(kw, cnt) for kw, cnt in kws[:6])
+                                st.markdown(
+                                    f'<div style="margin:4px 0 2px;">{tags}</div>',
+                                    unsafe_allow_html=True,
+                                )
+
+                            # AI 요약 (짧게 1~2문장)
+                            if ai_text and not ai_text.startswith("("):
+                                short = ". ".join(ai_text.split(". ")[:2]) + ("." if ". " in ai_text else "")
+                                st.markdown(
+                                    f'<div style="font-size:0.84rem;color:{C_MUTED};line-height:1.65;'
+                                    f'margin-top:6px;border-top:1px solid {C_BORDER};padding-top:6px;">'
+                                    f'{short}</div>',
+                                    unsafe_allow_html=True,
+                                )
+        else:
+            st.info("갤러리별 데이터가 없습니다.")
+    except Exception as e:
+        st.warning(f"주간 리포트 로딩 실패: {e}")
+else:
+    st.info("아직 발행된 주간 리포트가 없습니다. 분석 봇을 실행하면 여기에 표시됩니다.")

@@ -1,158 +1,138 @@
 """
-Google Sheets 쓰기 모듈
-- 일간 분석 결과: 분석결과, 분석대상게시글
-- 주간 분석 결과: 주간분석, 주간종합
+Google Sheets 쓰기 모듈 — Analytics 전용
+
+대상 시트 (DC-Pickaxe Analytics 스프레드시트):
+  - daily_issues      : 일간 이슈 분석 결과
+  - weekly_galleries  : 주간 갤러리별 분석 결과
+  - weekly_overall    : 주간 전체 종합 요약
 """
+
 import os
 import json
+
 import gspread
-from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive',
+_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
 ]
 
-SHEET_HEADERS = {
-    '분석결과': [
-        'run_id', 'date', 'gallery_id', 'gallery_name',
-        'total_posts', 'new_posts_today', 'new_posts_7d', 'active_authors',
-        'top5_posts', 'top_keywords', 'hourly_dist', 'game_signals',
-        'ai_summary', 'created_at', 'has_issue', 'issue_score',
+_HEADERS = {
+    "daily_issues": [
+        "date", "run_id", "gallery_id", "gallery_name",
+        "posts_total", "avg_7d", "issue_score", "has_issue",
+        "keywords", "top_posts", "ai_summary",
     ],
-    '분석대상게시글': [
-        'run_id', 'date', 'gallery_id', 'gallery_name',
-        '글번호', '제목', '본문요약', '작성자', '게시일시',
-        '댓글수', '조회수', '추천수', '선택이유',
+    "weekly_galleries": [
+        "week_start", "week_end", "run_id", "gallery_id", "gallery_name",
+        "total_posts", "daily_counts", "keywords", "top_posts", "ai_summary",
     ],
-    '주간분석': [
-        'run_id', 'week_start', 'week_end', 'gallery_id', 'gallery_name',
-        'total_posts_week', 'daily_counts', 'top5_posts', 'top_keywords',
-        'ai_gallery_weekly', 'created_at',
-    ],
-    '주간종합': [
-        'run_id', 'week_start', 'week_end', 'ai_weekly_summary', 'created_at',
+    "weekly_overall": [
+        "week_start", "week_end", "run_id", "ai_summary",
     ],
 }
 
 
-def _get_client() -> gspread.Client:
-    if os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
-        import json as _json
-        info = _json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT_JSON'])
-        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+def _client() -> gspread.Client:
+    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if raw:
+        info = json.loads(raw)
+        creds = Credentials.from_service_account_info(info, scopes=_SCOPES)
     else:
-        path = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE', 'service_account.json')
-        creds = Credentials.from_service_account_file(path, scopes=SCOPES)
+        path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+        creds = Credentials.from_service_account_file(path, scopes=_SCOPES)
     return gspread.authorize(creds)
 
 
-def _get_spreadsheet() -> gspread.Spreadsheet:
-    return _get_client().open_by_key(os.environ['ANALYTICS_SPREADSHEET_ID'])
+def _spreadsheet() -> gspread.Spreadsheet:
+    return _client().open_by_key(os.environ["ANALYTICS_SPREADSHEET_ID"])
 
 
-def ensure_sheet_headers():
-    """필요한 시트 탭과 헤더를 자동 생성합니다. 기존 시트의 누락 컬럼도 추가합니다."""
-    sh = _get_spreadsheet()
-    existing = [ws.title for ws in sh.worksheets()]
+# ── 시트 초기화 ───────────────────────────────────────────────────────
 
-    for sheet_name, headers in SHEET_HEADERS.items():
-        if sheet_name not in existing:
-            ws = sh.add_worksheet(title=sheet_name, rows=5000, cols=len(headers))
-            ws.append_row(headers)
-            print(f"  시트 생성: '{sheet_name}'")
-        else:
-            ws = sh.worksheet(sheet_name)
-            first_row = ws.row_values(1)
-            if not first_row:
-                ws.append_row(headers)
-                print(f"  헤더 추가: '{sheet_name}'")
+def setup_sheets() -> None:
+    """
+    Analytics 스프레드시트 초기화.
+    구 시트 삭제 → 신규 시트 생성 + 헤더 작성.
+    """
+    sh = _spreadsheet()
+    existing = {ws.title for ws in sh.worksheets()}
+
+    old = {"분석결과", "분석대상게시글", "종합요약", "주간분석", "주간종합", "시트1"}
+    for title in old & existing:
+        sh.del_worksheet(sh.worksheet(title))
+        print(f"  [삭제] {title}")
+
+    for name, headers in _HEADERS.items():
+        if name in existing:
+            ws = sh.worksheet(name)
+            if ws.row_values(1) != headers:
+                ws.clear()
+                ws.append_row(headers, value_input_option="RAW")
+                print(f"  [헤더 재설정] {name}")
             else:
-                missing = [h for h in headers if h not in first_row]
-                if missing:
-                    new_row = first_row + missing
-                    ws.update(range_name='A1', values=[new_row])
-                    print(f"  컬럼 추가: '{sheet_name}' -> {missing}")
-                else:
-                    print(f"  이미 존재: '{sheet_name}'")
+                print(f"  [유지] {name}")
+        else:
+            ws = sh.add_worksheet(title=name, rows=5000, cols=len(headers))
+            ws.append_row(headers, value_input_option="RAW")
+            print(f"  [생성] {name}")
 
 
-def save_analysis_result(result: dict):
-    """갤러리 일간 분석 결과를 '분석결과' 시트에 저장합니다."""
-    sh = _get_spreadsheet()
-    ws = sh.worksheet('분석결과')
-    row = [
-        result.get('run_id', ''),
-        result.get('date', ''),
-        result.get('gallery_id', ''),
-        result.get('gallery_name', ''),
-        result.get('total_posts', 0),
-        result.get('new_posts_today', 0),
-        result.get('new_posts_7d', 0),
-        '',                                                                    # active_authors (보존용 빈칸)
-        json.dumps(result.get('top5_posts', []), ensure_ascii=False),
-        json.dumps(result.get('top_keywords', []), ensure_ascii=False),
-        json.dumps(result.get('hourly_dist', {}), ensure_ascii=False),
-        json.dumps(result.get('game_signals', {}), ensure_ascii=False),
-        result.get('ai_summary', ''),
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        result.get('has_issue', 0),
-        result.get('issue_score', 0),
+# ── 일간 이슈 적재 ────────────────────────────────────────────────────
+
+def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
+    """
+    daily_issues 시트에 일간 분석 결과를 추가합니다.
+    has_issue=0 인 갤러리도 포함 (전체 기록 유지).
+    """
+    ws = _spreadsheet().worksheet("daily_issues")
+    rows = [
+        [
+            date, run_id,
+            r.get("gallery_id", ""), r.get("gallery_name", ""),
+            r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
+            r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
+            json.dumps(r.get("keywords", []), ensure_ascii=False),
+            json.dumps(r.get("top_posts", []), ensure_ascii=False),
+            r.get("ai_summary", ""),
+        ]
+        for r in results
     ]
-    ws.append_row(row, value_input_option='USER_ENTERED')
+    if rows:
+        ws.append_rows(rows, value_input_option="RAW")
 
 
-def save_analysis_posts(posts: list[dict], run_id: str, date: str,
-                         gallery_id: str, gallery_name: str):
-    """분석에 사용된 게시글 목록을 '분석대상게시글' 시트에 저장합니다."""
-    if not posts:
-        return
-    sh = _get_spreadsheet()
-    ws = sh.worksheet('분석대상게시글')
-    rows = []
-    for post in posts:
-        body = str(post.get('본문', ''))[:200].replace('\n', ' ')
-        rows.append([
-            run_id, date, gallery_id, gallery_name,
-            str(post.get('글번호', '')),
-            str(post.get('제목', '')),
-            body,
-            str(post.get('작성자', '')),
-            str(post.get('날짜', '')),
-            int(post.get('댓글수', 0)),
-            int(post.get('조회수', 0)),
-            int(post.get('추천수', 0)),
-            str(post.get('선택이유', '')),
-        ])
-    ws.append_rows(rows, value_input_option='USER_ENTERED')
+# ── 주간 갤러리별 적재 ────────────────────────────────────────────────
 
-
-def save_weekly_gallery_result(result: dict):
-    """갤러리 주간 분석 결과를 '주간분석' 시트에 저장합니다."""
-    sh = _get_spreadsheet()
-    ws = sh.worksheet('주간분석')
-    row = [
-        result.get('run_id', ''),
-        result.get('week_start', ''),
-        result.get('week_end', ''),
-        result.get('gallery_id', ''),
-        result.get('gallery_name', ''),
-        result.get('total_posts_week', 0),
-        json.dumps(result.get('daily_counts', {}), ensure_ascii=False),
-        json.dumps(result.get('top5_posts', []), ensure_ascii=False),
-        json.dumps(result.get('top_keywords', []), ensure_ascii=False),
-        result.get('ai_gallery_weekly', ''),
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+def append_weekly_galleries(
+    results: list[dict], week_start: str, week_end: str, run_id: str
+) -> None:
+    """weekly_galleries 시트에 주간 갤러리별 분석 결과를 추가합니다."""
+    ws = _spreadsheet().worksheet("weekly_galleries")
+    rows = [
+        [
+            week_start, week_end, run_id,
+            r.get("gallery_id", ""), r.get("gallery_name", ""),
+            r.get("total_posts", 0),
+            json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
+            json.dumps(r.get("keywords", []), ensure_ascii=False),
+            json.dumps(r.get("top_posts", []), ensure_ascii=False),
+            r.get("ai_summary", ""),
+        ]
+        for r in results
     ]
-    ws.append_row(row, value_input_option='USER_ENTERED')
+    if rows:
+        ws.append_rows(rows, value_input_option="RAW")
 
 
-def save_weekly_summary(run_id: str, week_start: str, week_end: str, summary: str):
-    """주간 종합 요약을 '주간종합' 시트에 저장합니다."""
-    sh = _get_spreadsheet()
-    ws = sh.worksheet('주간종합')
-    ws.append_row([
-        run_id, week_start, week_end, summary,
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-    ], value_input_option='USER_ENTERED')
+# ── 주간 종합 요약 적재 ───────────────────────────────────────────────
+
+def append_weekly_overall(
+    ai_summary: str, week_start: str, week_end: str, run_id: str
+) -> None:
+    """weekly_overall 시트에 주간 종합 요약을 추가합니다."""
+    _spreadsheet().worksheet("weekly_overall").append_row(
+        [week_start, week_end, run_id, ai_summary],
+        value_input_option="RAW",
+    )

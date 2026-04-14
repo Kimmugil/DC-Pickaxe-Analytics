@@ -3,7 +3,12 @@
     "allow": [
       "Bash(python -c \"import calendar; from datetime import date; print\\(date\\(2026,4,6\\).strftime\\('%A'\\)\\)\")",
       "Bash(python run_weekly.py --week-start 2026-03-30)",
-      "Bash(python run_analysis.py --init-headers)"
+      "Bash(python run_analysis.py --init-headers)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python -c \"from dashboard.dash_styles import inject_css, issue_sev_class, issue_badge_class, issue_sev_label, methodology_daily_html; print\\('imports OK'\\)\")",
+      "Bash(python -c ':*)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

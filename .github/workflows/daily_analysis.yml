@@ -1,19 +1,15 @@
-name: Daily DC-Pickaxe Analytics
+name: Daily Issue Analysis
 
 on:
-  # 매일 09:00 KST (= UTC 00:00) 자동 실행
+  # 매일 09:00 KST (= UTC 00:00)
   schedule:
     - cron: '0 0 * * *'
 
-  # 수동 실행 (GitHub Actions 탭에서 직접 트리거 가능)
+  # 수동 실행
   workflow_dispatch:
     inputs:
-      rerun_id:
-        description: '재분석할 run_id (비워두면 신규 분석)'
-        required: false
-        default: ''
       analysis_date:
-        description: '분석 기준일 YYYY-MM-DD (비워두면 어제)'
+        description: '분석 날짜 YYYY-MM-DD (비워두면 어제)'
         required: false
         default: ''
 
@@ -23,11 +19,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -35,19 +29,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run analysis bot
+      - name: Run daily analysis
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
           ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
           GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL:                gemini-2.5-flash
         run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ github.event.inputs.rerun_id }}" ]; then
-            EXTRA_ARGS="--rerun ${{ github.event.inputs.rerun_id }}"
-          fi
+          DATE_ARG=""
           if [ -n "${{ github.event.inputs.analysis_date }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --analysis-date ${{ github.event.inputs.analysis_date }}"
+            DATE_ARG="--date ${{ github.event.inputs.analysis_date }}"
           fi
-          python run_analysis.py $EXTRA_ARGS
+          python run_daily.py $DATE_ARG
