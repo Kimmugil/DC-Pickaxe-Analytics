@@ -283,6 +283,15 @@ def render_sidebar_nav() -> None:
         st.link_button("⛏️ 곡괭이 감시하러 가기", "https://kimmugil-dc-pickaxe-dashboard.streamlit.app/", use_container_width=True)
         st.divider()
 
+        # 사이드바 배너 이미지
+        import os
+        _img_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "assets", "sidebar_banner.png",
+        )
+        if os.path.exists(_img_path):
+            st.image(_img_path, use_container_width=True)
+
 
 # ── 코드 레벨 패딩 헬퍼 ─────────────────────────────────────────────
 
