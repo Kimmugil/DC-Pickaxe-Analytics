@@ -2,7 +2,7 @@
 DC-Pickaxe Analytics — 홈
 
 구성:
-  - 30일 가로 스크롤 캘린더 (📅🚨 클릭 이동)
+  - 30일 가로 스크롤 캘린더 (📅📌 클릭 이동)
   - 최신 주간 리포트 갤러리 카드 미리보기
   - 최근 주간 / 일간 리포트 상태 카드 (하단)
 """
@@ -99,7 +99,7 @@ try:
         if has_issue:
             markers += (
                 f'<a href="/daily?date={d_str}" target="_self" style="text-decoration:none;'
-                f'font-size:0.8rem;line-height:1.2;display:block;">🚨</a>'
+                f'font-size:0.8rem;line-height:1.2;display:block;">📌</a>'
             )
 
         cells += (
@@ -118,7 +118,7 @@ try:
         f'<div style="display:flex;gap:5px;width:max-content;">{cells}</div>'
         f'</div>'
         f'<div style="font-size:0.71rem;color:#94A3B8;margin-bottom:2px;">'
-        f'📅 주간 리포트 &nbsp;·&nbsp; 🚨 일간 이슈 &nbsp;·&nbsp; 클릭하면 해당 페이지로 이동</div>'
+        f'📅 주간 리포트 &nbsp;·&nbsp; 📌 일간 이슈 &nbsp;·&nbsp; 클릭하면 해당 페이지로 이동</div>'
     )
     st.markdown(calendar_html, unsafe_allow_html=True)
     st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)

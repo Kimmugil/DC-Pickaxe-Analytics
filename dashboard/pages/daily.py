@@ -13,7 +13,7 @@ load_dotenv()
 
 st.set_page_config(
     page_title="일간 이슈 — DC-Pickaxe",
-    page_icon="🚨",
+    page_icon="📌",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -45,7 +45,7 @@ def load_daily(date_str: str):
 # ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
     f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
-    f'letter-spacing:-0.03em;margin-bottom:2px;">🚨 일간 이슈 리포트</h1>',
+    f'letter-spacing:-0.03em;margin-bottom:2px;">📌 일간 이슈 리포트</h1>',
     unsafe_allow_html=True,
 )
 

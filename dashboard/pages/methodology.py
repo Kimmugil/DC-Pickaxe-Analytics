@@ -139,7 +139,7 @@ st.divider()
 # 3. 일간 이슈 분석
 # ════════════════════════════════════════════════════════════════════
 st.markdown(
-    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">🚨 일간 이슈 분석</div>',
+    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">📌 일간 이슈 분석</div>',
     unsafe_allow_html=True,
 )
 
@@ -402,16 +402,16 @@ schedule_html = f"""
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
                 text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">🕷️ 스크래핑</div>
-    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매일 오전 2시</div>
+    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">DC-Pickaxe 봇 스케줄</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
-      DC Inside 갤러리 게시글 수집<br>→ Google Sheets 저장
+      DC Inside 갤러리 게시글 수집<br>→ Google Sheets 저장<br>(별도 리포지토리에서 운영)
     </div>
   </div>
   <div style="flex:1;min-width:160px;background:#F8FAFC;border:1px solid {C_BORDER};
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
-                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">🚨 일간 분석</div>
-    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매일 오전 3시</div>
+                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📌 일간 분석</div>
+    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매일 오전 9시 KST</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
       전일 게시글 이슈 점수 산출<br>이슈 갤러리 AI 요약 생성
     </div>
@@ -420,7 +420,7 @@ schedule_html = f"""
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
                 text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📅 주간 분석</div>
-    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매주 월요일 오전 4시</div>
+    <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매주 월요일 오전 9시 KST</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
       전주(월~일) 갤러리별 집계<br>AI 갤러리 요약 + 종합 요약
     </div>

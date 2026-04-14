@@ -277,7 +277,7 @@ def render_sidebar_nav() -> None:
         st.divider()
         st.page_link("app.py",               label="🏠  홈",           use_container_width=True)
         st.page_link("pages/weekly.py",       label="📅  주간 리포트",  use_container_width=True)
-        st.page_link("pages/daily.py",        label="🚨  일간 이슈",    use_container_width=True)
+        st.page_link("pages/daily.py",        label="📌  일간 이슈",    use_container_width=True)
         st.page_link("pages/methodology.py",  label="📖  분석 방법",    use_container_width=True)
         st.divider()
         st.link_button("⛏️ 곡괭이 감시하러 가기", "https://kimmugil-dc-pickaxe-dashboard.streamlit.app/", use_container_width=True)
