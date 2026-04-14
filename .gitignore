@@ -6,6 +6,7 @@ service_account.json
 *-service-account.json
 *_service_account.json
 credentials.json
+dc-pickaxe-39428cb2b5d7.json
 
 # Streamlit 로컬 시크릿 파일
 .streamlit/secrets.toml

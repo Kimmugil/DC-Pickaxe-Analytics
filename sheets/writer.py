@@ -54,16 +54,12 @@ def _spreadsheet() -> gspread.Spreadsheet:
 def setup_sheets() -> None:
     """
     Analytics 스프레드시트 초기화.
-    구 시트 삭제 → 신규 시트 생성 + 헤더 작성.
+    신규 시트 먼저 생성 → 구 시트 삭제 (1개 남은 시트 삭제 불가 문제 방지).
     """
     sh = _spreadsheet()
     existing = {ws.title for ws in sh.worksheets()}
 
-    old = {"분석결과", "분석대상게시글", "종합요약", "주간분석", "주간종합", "시트1"}
-    for title in old & existing:
-        sh.del_worksheet(sh.worksheet(title))
-        print(f"  [삭제] {title}")
-
+    # 1단계: 신규 시트 먼저 생성
     for name, headers in _HEADERS.items():
         if name in existing:
             ws = sh.worksheet(name)
@@ -77,6 +73,15 @@ def setup_sheets() -> None:
             ws = sh.add_worksheet(title=name, rows=5000, cols=len(headers))
             ws.append_row(headers, value_input_option="RAW")
             print(f"  [생성] {name}")
+
+    # 2단계: 구 시트 삭제 (이제 새 시트가 있으므로 안전하게 삭제 가능)
+    existing = {ws.title for ws in sh.worksheets()}  # 갱신
+    old = {"분析결과", "분析결果", "분析결과", "분석결과",
+           "분析대상게시글", "분석대상게시글",
+           "종합요약", "주간분析", "주간분석", "주간종합", "시트1"}
+    for title in old & existing:
+        sh.del_worksheet(sh.worksheet(title))
+        print(f"  [삭제] {title}")
 
 
 # ── 일간 이슈 적재 ────────────────────────────────────────────────────
