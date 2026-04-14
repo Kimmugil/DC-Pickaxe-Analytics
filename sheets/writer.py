@@ -83,9 +83,9 @@ def setup_sheets() -> None:
 
     # 2단계: 구 시트 삭제 (이제 새 시트가 있으므로 안전하게 삭제 가능)
     existing = {ws.title for ws in sh.worksheets()}  # 갱신
-    old = {"분析결과", "분析결果", "분析결과", "분석결과",
-           "분析대상게시글", "분석대상게시글",
-           "종합요약", "주간분析", "주간분석", "주간종합", "시트1"}
+    old = {"분석결과", "분석결果", "분석결과", "분석결과",
+           "분석대상게시글", "분석대상게시글",
+           "종합요약", "주간분석", "주간분석", "주간종합", "시트1"}
     for title in old & existing:
         sh.del_worksheet(sh.worksheet(title))
         print(f"  [삭제] {title}")

@@ -1,5 +1,5 @@
 """
-DC-Pickaxe Analytics — 분析 방법
+DC-Pickaxe Analytics — 분석 방법
 """
 
 import sys
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(
-    page_title="분析 방법 — DC-Pickaxe",
+    page_title="분석 방법 — DC-Pickaxe",
     page_icon="📖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -29,10 +29,10 @@ render_sidebar_nav()
 # ── 페이지 헤더 ──────────────────────────────────────────────────────
 st.markdown(
     f'<h1 style="font-size:1.55rem;font-weight:700;color:{C_TITLE};'
-    f'letter-spacing:-0.03em;margin-bottom:2px;">📖 분析 방법</h1>',
+    f'letter-spacing:-0.03em;margin-bottom:2px;">📖 분석 방법</h1>',
     unsafe_allow_html=True,
 )
-st.caption("DC-Pickaxe Analytics 데이터 수집 · 분析 기준 · 이슈 판별 방식 안내")
+st.caption("DC-Pickaxe Analytics 데이터 수집 · 분석 기준 · 이슈 판별 방식 안내")
 st.divider()
 
 
@@ -63,7 +63,7 @@ pipeline_html = f"""
   <div style="flex:1;min-width:120px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;
               padding:14px 16px;text-align:center;">
     <div style="font-size:1.3rem;margin-bottom:4px;">⚙️</div>
-    <div style="font-size:0.82rem;font-weight:700;color:#92400E;">분析 엔진</div>
+    <div style="font-size:0.82rem;font-weight:700;color:#92400E;">분석 엔진</div>
     <div style="font-size:0.73rem;color:{C_MUTED};margin-top:3px;line-height:1.5;">이슈 감지 / 주간 집계<br>키워드 · AI 요약</div>
   </div>
   <div style="display:flex;align-items:center;font-size:1.2rem;color:{C_LABEL};padding:0 4px;">→</div>
@@ -128,7 +128,7 @@ with col2:
 st.markdown(
     f'<div style="font-size:0.76rem;color:{C_MUTED};margin:4px 0 16px;line-height:1.6;">'
     f'⚠️ DC Inside 특성상 당일 올라온 게시글의 날짜 필드는 "03:11"(시간만 표시) 형식으로 수집됩니다. '
-    f'분析 시 인접 행의 날짜를 참조하여 자동 추론합니다.'
+    f'분석 시 인접 행의 날짜를 참조하여 자동 추론합니다.'
     f'</div>',
     unsafe_allow_html=True,
 )
@@ -136,16 +136,16 @@ st.divider()
 
 
 # ════════════════════════════════════════════════════════════════════
-# 3. 일간 이슈 분析
+# 3. 일간 이슈 분석
 # ════════════════════════════════════════════════════════════════════
 st.markdown(
-    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">🚨 일간 이슈 분析</div>',
+    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">🚨 일간 이슈 분석</div>',
     unsafe_allow_html=True,
 )
 
 st.markdown(
     f'<div style="font-size:0.84rem;color:{C_BODY};line-height:1.75;margin-bottom:12px;">'
-    f'매일 각 갤러리의 당일 게시글을 분析하여 <b>최근 7일 평균 대비 비정상적 활동</b>을 감지합니다. '
+    f'매일 각 갤러리의 당일 게시글을 분석하여 <b>최근 7일 평균 대비 비정상적 활동</b>을 감지합니다. '
     f'단순한 게시량 증가만으로는 이슈가 발행되지 않으며, '
     f'<b>실질적 반응(댓글·추천)이 동반된 경우에만</b> 이슈로 판정됩니다.'
     f'</div>',
@@ -270,10 +270,10 @@ st.divider()
 
 
 # ════════════════════════════════════════════════════════════════════
-# 4. 주간 리포트 분析
+# 4. 주간 리포트 분석
 # ════════════════════════════════════════════════════════════════════
 st.markdown(
-    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">📅 주간 리포트 분析</div>',
+    f'<div style="font-size:1.05rem;font-weight:700;color:{C_HEADING};margin-bottom:10px;">📅 주간 리포트 분석</div>',
     unsafe_allow_html=True,
 )
 
@@ -307,7 +307,7 @@ with col_w2:
             f'<div style="font-size:0.84rem;color:{C_BODY};line-height:1.8;">'
             f'• 주간 게시글 수 <b>10건 미만</b> 갤러리<br>'
             f'• 데이터가 너무 적으면 AI 요약의 신뢰도가 낮아지기 때문<br>'
-            f'• <b>단, 분析 자체는 진행</b>됩니다 (일별 추이, 키워드, TOP5 게시글 표시)<br>'
+            f'• <b>단, 분석 자체는 진행</b>됩니다 (일별 추이, 키워드, TOP5 게시글 표시)<br>'
             f'• 0건 갤러리도 "활동 없음"으로 카드에 표시됨'
             f'</div>',
             unsafe_allow_html=True,
@@ -410,7 +410,7 @@ schedule_html = f"""
   <div style="flex:1;min-width:160px;background:#F8FAFC;border:1px solid {C_BORDER};
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
-                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">🚨 일간 분析</div>
+                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">🚨 일간 분석</div>
     <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매일 오전 3시</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
       전일 게시글 이슈 점수 산출<br>이슈 갤러리 AI 요약 생성
@@ -419,7 +419,7 @@ schedule_html = f"""
   <div style="flex:1;min-width:160px;background:#F8FAFC;border:1px solid {C_BORDER};
               border-radius:8px;padding:14px 16px;">
     <div style="font-size:0.73rem;font-weight:700;letter-spacing:0.06em;
-                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📅 주간 분析</div>
+                text-transform:uppercase;color:{C_LABEL};margin-bottom:6px;">📅 주간 분석</div>
     <div style="font-size:0.88rem;font-weight:700;color:{C_HEADING};">매주 월요일 오전 4시</div>
     <div style="font-size:0.78rem;color:{C_MUTED};margin-top:4px;line-height:1.5;">
       전주(월~일) 갤러리별 집계<br>AI 갤러리 요약 + 종합 요약

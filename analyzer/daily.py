@@ -145,7 +145,7 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
     if target_date is None:
         target_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    print(f"\n[일간 분析] 대상 날짜: {target_date}", flush=True)
+    print(f"\n[일간 분석] 대상 날짜: {target_date}", flush=True)
 
     galleries = reader.get_gallery_list()
     if not galleries:
