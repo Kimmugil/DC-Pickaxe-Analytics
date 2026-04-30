@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
+import { getDailyIssueDates } from '@/lib/data'
 
 function fmtDate(d: string) {
   const dt = new Date(d)
@@ -8,7 +8,7 @@ function fmtDate(d: string) {
 
 export default async function DailyListPage() {
   let dates: string[] = []
-  try { dates = await api.dailyDates() } catch {}
+  try { dates = await getDailyIssueDates() } catch {}
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
 import type { DailyIssue } from '@/types'
+import { getCalendarData, getLatestDailyInfo, getLatestWeeklyInfo, getDailyByDate } from '@/lib/data'
 
 function fmt(d: string) {
   if (!d) return ''
@@ -110,22 +110,18 @@ function CalendarStrip({
 }
 
 export default async function HomePage() {
-  const [calendar, latestDaily, latestWeekly] = await Promise.allSettled([
-    api.calendar(),
-    api.dailyLatest(),
-    api.weeklyLatest(),
+  const [cal, dailyInfo, weeklyInfo] = await Promise.all([
+    getCalendarData().catch(() => ({ issue_dates: [] as string[], weekly_dates: [] as string[] })),
+    getLatestDailyInfo().catch(() => null),
+    getLatestWeeklyInfo().catch(() => null),
   ])
 
-  const cal         = calendar.status === 'fulfilled' ? calendar.value : { issue_dates: [], weekly_dates: [] }
-  const dailyInfo   = latestDaily.status === 'fulfilled' ? latestDaily.value : {}
-  const weeklyInfo  = latestWeekly.status === 'fulfilled' ? latestWeekly.value : {}
-
-  const latestDate  = dailyInfo.date
-  const issueCount  = dailyInfo.issue_gallery_count
+  const latestDate = dailyInfo?.date
+  const issueCount = dailyInfo?.issue_gallery_count
 
   let dailyIssues: DailyIssue[] = []
   if (latestDate) {
-    try { dailyIssues = await api.dailyByDate(latestDate) } catch {}
+    dailyIssues = await getDailyByDate(latestDate).catch(() => [])
   }
 
   const issues = dailyIssues.filter(i => i.has_issue || i.is_borderline)
@@ -194,13 +190,13 @@ export default async function HomePage() {
         )}
 
         {/* Weekly link */}
-        {weeklyInfo.week_start && (
+        {weeklyInfo?.week_start && (
           <section>
             <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400 mb-0.5">최신 주간 리포트</p>
                 <p className="font-medium text-sm">
-                  {fmt(weeklyInfo.week_start!)} ~ {fmt(weeklyInfo.week_end!)}
+                  {fmt(weeklyInfo.week_start)} ~ {fmt(weeklyInfo.week_end ?? '')}
                 </p>
               </div>
               <Link

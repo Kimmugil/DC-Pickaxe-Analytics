@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
+import { getWeeklyList } from '@/lib/data'
 
 function fmtDate(d: string) {
   const dt = new Date(d)
@@ -8,7 +8,7 @@ function fmtDate(d: string) {
 
 export default async function WeeklyListPage() {
   let weeks: string[] = []
-  try { weeks = await api.weeklyList() } catch {}
+  try { weeks = await getWeeklyList() } catch {}
 
   return (
     <div className="min-h-screen bg-gray-50">

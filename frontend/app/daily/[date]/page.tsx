@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
 import type { DailyIssue, TopPost } from '@/types'
 import { notFound } from 'next/navigation'
+import { getDailyByDate } from '@/lib/data'
 
 interface Props { params: Promise<{ date: string }> }
 
@@ -109,7 +109,7 @@ export default async function DailyDetailPage({ params }: Props) {
   const { date } = await params
   let issues: DailyIssue[] = []
   try {
-    issues = await api.dailyByDate(date)
+    issues = await getDailyByDate(date)
   } catch {
     notFound()
   }

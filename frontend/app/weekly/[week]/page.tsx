@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
 import type { WeeklyGallery, TopPost } from '@/types'
 import { notFound } from 'next/navigation'
 import { WeeklyBarChart } from '@/components/WeeklyBarChart'
+import { getWeeklyByWeek } from '@/lib/data'
 
 interface Props { params: Promise<{ week: string }> }
 
@@ -89,7 +89,7 @@ export default async function WeeklyDetailPage({ params }: Props) {
   const { week } = await params
   let data
   try {
-    data = await api.weeklyByWeek(week)
+    data = await getWeeklyByWeek(week)
   } catch {
     notFound()
   }
