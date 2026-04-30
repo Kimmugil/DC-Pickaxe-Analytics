@@ -8,12 +8,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 import json
 import streamlit as st
+from PIL import Image
 from dotenv import load_dotenv
 load_dotenv()
 
+_icon = Image.open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"))
+
 st.set_page_config(
     page_title="일간 체크포인트 — 디씨곡괭이 정련소",
-    page_icon="📌",
+    page_icon=_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )

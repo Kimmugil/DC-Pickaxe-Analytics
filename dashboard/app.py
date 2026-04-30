@@ -16,12 +16,15 @@ import json
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from PIL import Image
 from dotenv import load_dotenv
 load_dotenv()
 
+_icon = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icon.png"))
+
 st.set_page_config(
     page_title="디씨곡괭이 정련소",
-    page_icon="⛏️",
+    page_icon=_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )

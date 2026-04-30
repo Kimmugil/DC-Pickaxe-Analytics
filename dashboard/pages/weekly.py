@@ -12,12 +12,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 import json
 import streamlit as st
+from PIL import Image
 from dotenv import load_dotenv
 load_dotenv()
 
+_icon = Image.open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"))
+
 st.set_page_config(
     page_title="주간 리포트 — DC-Pickaxe",
-    page_icon="📅",
+    page_icon=_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )

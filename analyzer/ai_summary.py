@@ -64,6 +64,36 @@ def summarize_daily_issue(
     return _call(prompt)
 
 
+# ── 일간 경계 갤러리 요약 (score == BORDERLINE_THRESHOLD) ─────────────
+
+def summarize_daily_borderline(
+    gallery_name: str,
+    top_posts: list[dict],
+    keywords: list[list],
+    issue_score: int,
+    count_today: int,
+    avg_baseline: float,
+) -> str:
+    kw_str    = ", ".join(kw for kw, _ in keywords[:5]) if keywords else "없음"
+    top_title = top_posts[0]["제목"] if top_posts else "없음"
+    prompt = f"""DC인사이드 갤러리 동향을 분석하는 어시스턴트입니다.
+
+## 갤러리: {gallery_name}
+- 오늘 게시글: {count_today}건 (기준 평균: {avg_baseline:.0f}건, 이슈 점수: {issue_score}/10)
+- 주요 키워드: {kw_str}
+- 상위 게시글 제목: {top_title}
+
+이 갤러리는 이슈 임계값 바로 아래입니다. **2문장** 이내로 오늘 주목할 만한 점만 간략히 요약하세요.
+
+조건:
+- 한국어로 작성
+- 마크다운 헤딩(#) 사용 금지
+- 2문장 이내
+- 사실만 서술, 행동 제안 금지
+- 종결어미 '~습니다/ㅂ니다' 체로 통일"""
+    return _call(prompt)
+
+
 # ── 주간 갤러리별 요약 ────────────────────────────────────────────────
 
 def summarize_weekly_gallery(

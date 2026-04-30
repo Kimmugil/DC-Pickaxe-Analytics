@@ -275,6 +275,38 @@ def get_daily_counts(sheet_url: str, target_date: str, lookback_days: int = 7) -
     return {str(d): int(c) for d, c in counts.items()}
 
 
+def get_same_weekday_counts(sheet_url: str, target_date: str, weeks: int = 4) -> list[int]:
+    """target_date와 같은 요일의 과거 weeks주 게시글 수 반환 (가장 최근 주부터)."""
+    df = _gallery_df(sheet_url)
+    if df.empty or "날짜" not in df.columns:
+        return []
+    end = pd.to_datetime(target_date, errors="coerce")
+    if pd.isna(end):
+        return []
+    counts = []
+    for w in range(1, weeks + 1):
+        day = (end - timedelta(days=7 * w)).date()
+        cnt = int((df["날짜"].dt.date == day).sum())
+        counts.append(cnt)
+    return counts
+
+
+def get_recent_daily_counts(sheet_url: str, target_date: str, days: int = 3) -> list[int]:
+    """target_date 직전 days일의 게시글 수 반환 (최근일부터)."""
+    df = _gallery_df(sheet_url)
+    if df.empty or "날짜" not in df.columns:
+        return []
+    end = pd.to_datetime(target_date, errors="coerce")
+    if pd.isna(end):
+        return []
+    counts = []
+    for d in range(1, days + 1):
+        day = (end - timedelta(days=d)).date()
+        cnt = int((df["날짜"].dt.date == day).sum())
+        counts.append(cnt)
+    return counts
+
+
 # ── Analytics 시트 (분석 결과) ────────────────────────────────────────
 
 def _analytics_sheet(sheet_name: str) -> pd.DataFrame:
