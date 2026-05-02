@@ -174,7 +174,7 @@ export default async function DailyDetailPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Nav back={{ href: '/reports' }} title={pageTitle} subtitle={pageSubtitle} />
+      <Nav back={{ href: '/daily', label: t['nav.daily'] ?? '일간 이슈' }} title={pageTitle} subtitle={pageSubtitle} />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {issueList.length > 0 && (

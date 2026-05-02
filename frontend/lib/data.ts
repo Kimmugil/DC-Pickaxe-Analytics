@@ -156,7 +156,7 @@ export async function getDailyIssueList(): Promise<{
   issue_count: number
   borderline_count: number
   max_score: number
-  top_galleries: { name: string; score: number }[]
+  galleries: { id: string; name: string; score: number; has_issue: boolean }[]
 }[]> {
   const rows = await getDailyIssuesRaw()
 
@@ -172,7 +172,7 @@ export async function getDailyIssueList(): Promise<{
     issue_count: number
     borderline_count: number
     max_score: number
-    top_galleries: { name: string; score: number }[]
+    galleries: { id: string; name: string; score: number; has_issue: boolean }[]
   }[] = []
 
   for (const [date, dateRows] of byDate) {
@@ -185,14 +185,76 @@ export async function getDailyIssueList(): Promise<{
       issue_count: issueRows.length,
       borderline_count: borderRows.length,
       max_score: Math.round(parseNum(sorted[0]?.issue_score ?? '0')),
-      top_galleries: sorted.slice(0, 3).map(r => ({
+      galleries: sorted.map(r => ({
+        id: r.gallery_id ?? '',
         name: r.gallery_name ?? '',
         score: Math.round(parseNum(r.issue_score)),
+        has_issue: true,
       })),
     })
   }
 
   return result.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+export async function getRecentDailyIssues(days = 7): Promise<{
+  date: string
+  issues: DailyIssue[]
+}[]> {
+  const rows = await getDailyIssuesRaw()
+
+  const cutoff = new Date()
+  cutoff.setUTCDate(cutoff.getUTCDate() - days)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+
+  const byDate = new Map<string, Record<string, string>[]>()
+  for (const r of rows) {
+    if (!r.date || r.date < cutoffStr) continue
+    if (!parseBool(r.has_issue) && !parseBool(r.is_borderline)) continue
+    if (!byDate.has(r.date)) byDate.set(r.date, [])
+    byDate.get(r.date)!.push(r)
+  }
+
+  return Array.from(byDate.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, dateRows]) => ({
+      date,
+      issues: dateRows
+        .map(r => toDaily(r))
+        .filter(i => i.has_issue || i.is_borderline)
+        .sort((a, b) => b.issue_score - a.issue_score),
+    }))
+}
+
+export async function getLatestWeeklyOverall(): Promise<{
+  week_start: string
+  week_end: string
+  ai_summary: string
+  galleries: WeeklyGallery[]
+} | null> {
+  const [overallRows, galRows] = await Promise.all([
+    getWeeklyOverallRaw(),
+    getWeeklyGalleriesRaw(),
+  ])
+  if (!overallRows.length) return null
+
+  const latest = [...overallRows].sort(
+    (a, b) => (b.week_start ?? '').localeCompare(a.week_start ?? ''),
+  )[0]
+
+  const galleryMap = new Map<string, Record<string, string>>()
+  galRows
+    .filter(r => r.week_start === latest.week_start)
+    .forEach(r => galleryMap.set(r.gallery_id, r))
+
+  return {
+    week_start: latest.week_start ?? '',
+    week_end:   latest.week_end ?? '',
+    ai_summary: latest.ai_summary ?? '',
+    galleries:  Array.from(galleryMap.values())
+      .map(toWeekly)
+      .sort((a, b) => b.total_posts - a.total_posts),
+  }
 }
 
 export async function getWeeklyListWithInfo(): Promise<{

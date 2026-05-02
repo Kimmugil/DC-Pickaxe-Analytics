@@ -117,7 +117,7 @@ export default async function WeeklyDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav
-        back={{ href: '/reports' }}
+        back={{ href: '/weekly', label: t['nav.weekly'] ?? '주간 리포트' }}
         title={titleStr}
         subtitle={tp(t, 'common.gallery_count', { count: galleries.length }, '{count}개 갤러리')}
       />

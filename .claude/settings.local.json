@@ -20,7 +20,10 @@
       "Bash(venv\\\\Scripts\\\\python.exe run_weekly.py --week-start 2026-04-06)",
       "Bash(\"venv/Scripts/python.exe\" run_weekly.py --week-start 2026-04-06)",
       "Bash(PYTHONIOENCODING=utf-8 \"venv/Scripts/python.exe\" run_weekly.py --week-start 2026-04-06)",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }

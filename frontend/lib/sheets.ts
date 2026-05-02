@@ -41,26 +41,52 @@ async function fetchSheet(sheetName: string): Promise<Record<string, string>[]> 
     })
 }
 
+/** 마스터 스프레드시트 ID (URL에서 추출) */
+function getMasterSheetId(): string | null {
+  const url = process.env.DC_PICKAXE_MASTER_SHEET_URL ?? ''
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  return m?.[1] ?? null
+}
+
+/** 관리자 비밀번호 — 마스터시트 config!B1, 없으면 ADMIN_PASSWORD 환경변수 */
+export async function getAdminPassword(): Promise<string> {
+  const id = getMasterSheetId()
+  if (id) {
+    try {
+      const sheets = createClient()
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: id,
+        range: 'config!B1',
+      })
+      const val = (res.data.values?.[0]?.[0] ?? '') as string
+      if (val) return val
+    } catch {
+      // fallthrough to env var
+    }
+  }
+  return process.env.ADMIN_PASSWORD ?? ''
+}
+
 export const getDailyIssuesRaw = unstable_cache(
   () => fetchSheet('daily_issues'),
   ['sheet:daily_issues'],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ['sheet:daily_issues'] },
 )
 
 export const getWeeklyGalleriesRaw = unstable_cache(
   () => fetchSheet('weekly_galleries'),
   ['sheet:weekly_galleries'],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ['sheet:weekly_galleries'] },
 )
 
 export const getWeeklyOverallRaw = unstable_cache(
   () => fetchSheet('weekly_overall'),
   ['sheet:weekly_overall'],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ['sheet:weekly_overall'] },
 )
 
 export const getUITextsRaw = unstable_cache(
   () => fetchSheet('ui_texts'),
   ['sheet:ui_texts'],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ['sheet:ui_texts'] },
 )

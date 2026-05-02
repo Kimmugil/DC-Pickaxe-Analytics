@@ -5,7 +5,7 @@ interface NavProps {
   back?: { href: string; label?: string }
   title?: string
   subtitle?: string
-  active?: 'home' | 'reports' | 'gallery'
+  active?: 'home' | 'weekly' | 'daily' | 'gallery' | 'admin'
 }
 
 export async function Nav({ back, title, subtitle, active }: NavProps) {
@@ -22,7 +22,7 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
                 href={back.href}
                 className="text-gray-400 hover:text-white text-sm shrink-0 transition-colors"
               >
-                ← {back.label ?? t['nav.reports'] ?? '리포트 목록'}
+                ← {back.label ?? t['nav.back'] ?? '뒤로'}
               </Link>
               {title && (
                 <div className="min-w-0 border-l border-gray-700 pl-3">
@@ -32,7 +32,7 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
               )}
             </>
           ) : (
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 shrink-0">
               <span>⛏️</span>
               <div>
                 <p className="text-sm font-semibold leading-tight">
@@ -46,36 +46,33 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
           )}
         </div>
 
-        <nav className="flex items-center gap-0.5 text-xs shrink-0">
+        <nav className="flex items-center gap-0.5 text-xs">
+          {[
+            { href: '/',        key: 'home',    label: t['nav.home']    ?? '홈' },
+            { href: '/weekly',  key: 'weekly',  label: t['nav.weekly']  ?? '주간 리포트' },
+            { href: '/daily',   key: 'daily',   label: t['nav.daily']   ?? '일간 이슈' },
+          ].map(item => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`px-3 py-1.5 rounded transition-colors ${
+                active === item.key
+                  ? 'text-white bg-gray-700'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
           <Link
-            href="/"
-            className={`px-3 py-1.5 rounded transition-colors ${
-              active === 'home'
-                ? 'text-white bg-gray-700'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            href="/admin"
+            className={`ml-3 px-2.5 py-1.5 rounded transition-colors text-[11px] ${
+              active === 'admin'
+                ? 'text-gray-300 bg-gray-800'
+                : 'text-gray-600 hover:text-gray-400 hover:bg-gray-800'
             }`}
           >
-            {t['nav.home'] ?? '홈'}
-          </Link>
-          <Link
-            href="/reports"
-            className={`px-3 py-1.5 rounded transition-colors ${
-              active === 'reports'
-                ? 'text-white bg-gray-700'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            {t['nav.reports'] ?? '리포트 목록'}
-          </Link>
-          <Link
-            href="/gallery"
-            className={`px-3 py-1.5 rounded transition-colors ${
-              active === 'gallery'
-                ? 'text-white bg-gray-700'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            {t['nav.gallery'] ?? '갤러리'}
+            {t['nav.admin'] ?? '관리자'}
           </Link>
         </nav>
 
