@@ -131,6 +131,92 @@ export async function getLatestWeeklyInfo() {
   return { week_start: r.week_start ?? '', week_end: r.week_end ?? '' }
 }
 
+export async function getDailyIssueList(): Promise<{
+  date: string
+  issue_count: number
+  borderline_count: number
+  max_score: number
+  top_galleries: { name: string; score: number }[]
+}[]> {
+  const rows = await getDailyIssuesRaw()
+
+  const byDate = new Map<string, Record<string, string>[]>()
+  for (const r of rows) {
+    if (!r.date) continue
+    if (!byDate.has(r.date)) byDate.set(r.date, [])
+    byDate.get(r.date)!.push(r)
+  }
+
+  const result: {
+    date: string
+    issue_count: number
+    borderline_count: number
+    max_score: number
+    top_galleries: { name: string; score: number }[]
+  }[] = []
+
+  for (const [date, dateRows] of byDate) {
+    const issueRows = dateRows.filter(r => parseBool(r.has_issue))
+    if (issueRows.length === 0) continue
+    const borderRows = dateRows.filter(r => !parseBool(r.has_issue) && parseBool(r.is_borderline))
+    const sorted = [...issueRows].sort((a, b) => parseNum(b.issue_score) - parseNum(a.issue_score))
+    result.push({
+      date,
+      issue_count: issueRows.length,
+      borderline_count: borderRows.length,
+      max_score: Math.round(parseNum(sorted[0]?.issue_score ?? '0')),
+      top_galleries: sorted.slice(0, 3).map(r => ({
+        name: r.gallery_name ?? '',
+        score: Math.round(parseNum(r.issue_score)),
+      })),
+    })
+  }
+
+  return result.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+export async function getWeeklyListWithInfo(): Promise<{
+  week_start: string
+  week_end: string
+  gallery_count: number
+  ai_summary: string
+}[]> {
+  const [galRows, overallRows] = await Promise.all([
+    getWeeklyGalleriesRaw(),
+    getWeeklyOverallRaw(),
+  ])
+
+  const weekGalleries = new Map<string, Set<string>>()
+  for (const r of galRows) {
+    if (!r.week_start || !r.gallery_id) continue
+    if (!weekGalleries.has(r.week_start)) weekGalleries.set(r.week_start, new Set())
+    weekGalleries.get(r.week_start)!.add(r.gallery_id)
+  }
+
+  const overallMap = new Map<string, Record<string, string>>()
+  for (const r of overallRows) {
+    if (!r.week_start) continue
+    const existing = overallMap.get(r.week_start)
+    if (!existing || (r.run_id ?? '') > (existing.run_id ?? '')) {
+      overallMap.set(r.week_start, r)
+    }
+  }
+
+  return Array.from(weekGalleries.entries())
+    .map(([week_start, gallerySet]) => {
+      const overall = overallMap.get(week_start)
+      const fallbackEnd = new Date(week_start + 'T00:00:00')
+      fallbackEnd.setDate(fallbackEnd.getDate() + 6)
+      return {
+        week_start,
+        week_end: overall?.week_end ?? fallbackEnd.toISOString().slice(0, 10),
+        gallery_count: gallerySet.size,
+        ai_summary: overall?.ai_summary ?? '',
+      }
+    })
+    .sort((a, b) => b.week_start.localeCompare(a.week_start))
+}
+
 export async function getWeeklyByWeek(weekStart: string): Promise<WeeklyData> {
   const [galRows, overallRows] = await Promise.all([
     getWeeklyGalleriesRaw(),

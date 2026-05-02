@@ -1,36 +1,59 @@
 import Link from 'next/link'
-import { getDailyIssueDates } from '@/lib/data'
+import { getDailyIssueList } from '@/lib/data'
+import { Nav } from '@/components/Nav'
 
-function fmtDate(d: string) {
-  const dt = new Date(d)
-  return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월 ${dt.getDate()}일`
+function fmt(d: string) {
+  if (!d) return ''
+  const [y, m, day] = d.split('-').map(Number)
+  return `${y}년 ${m}월 ${day}일`
 }
 
 export default async function DailyListPage() {
-  let dates: string[] = []
-  try { dates = await getDailyIssueDates() } catch {}
+  let list: Awaited<ReturnType<typeof getDailyIssueList>> = []
+  try {
+    list = await getDailyIssueList()
+  } catch {}
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gray-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="text-gray-400 hover:text-white text-sm">← 홈</Link>
-          <h1 className="text-sm font-semibold">일간 체크포인트 목록</h1>
-        </div>
-      </header>
+      <Nav
+        back={{ href: '/reports', label: '리포트 목록' }}
+        title="일간 이슈 목록"
+      />
+
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {dates.length === 0 ? (
+        {list.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-20">데이터 없음</p>
         ) : (
-          <div className="space-y-1">
-            {dates.map(d => (
+          <div className="space-y-1.5">
+            {list.map(item => (
               <Link
-                key={d}
-                href={`/daily/${d}`}
-                className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 transition-colors"
+                key={item.date}
+                href={`/daily/${item.date}`}
+                className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 transition-colors group"
               >
-                <span className="font-medium text-sm">{fmtDate(d)}</span>
-                <span className="text-gray-400 text-xs">→</span>
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-gray-900">{fmt(item.date)}</span>
+                  {item.top_galleries.length > 0 && (
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      {item.top_galleries.map(g => (
+                        <span key={g.name} className="text-xs text-gray-500">
+                          {g.name}{' '}
+                          <span className="tabular-nums text-gray-400">{g.score}점</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-3">
+                  <span className="text-xs text-gray-400">
+                    이슈 {item.issue_count}개
+                    {item.borderline_count > 0 && ` · 경계 ${item.borderline_count}개`}
+                  </span>
+                  <span className="text-gray-300 group-hover:text-gray-500 text-sm transition-colors">
+                    →
+                  </span>
+                </div>
               </Link>
             ))}
           </div>

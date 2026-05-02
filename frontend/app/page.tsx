@@ -1,113 +1,223 @@
 import Link from 'next/link'
-import type { DailyIssue } from '@/types'
-import { getCalendarData, getLatestDailyInfo, getLatestWeeklyInfo, getDailyByDate } from '@/lib/data'
+import type { DailyIssue, WeeklyGallery } from '@/types'
+import {
+  getCalendarData,
+  getLatestDailyInfo,
+  getLatestWeeklyInfo,
+  getDailyByDate,
+  getWeeklyByWeek,
+} from '@/lib/data'
+import { Nav } from '@/components/Nav'
+import { WeeklyBarChart } from '@/components/WeeklyBarChart'
 
 function fmt(d: string) {
   if (!d) return ''
-  const dt = new Date(d)
-  return `${dt.getMonth() + 1}월 ${dt.getDate()}일`
+  const [, m, day] = d.split('-').map(Number)
+  return `${m}월 ${day}일`
 }
 
-function ScoreBadge({ score, hasIssue, isBorderline }: {
-  score: number; hasIssue: boolean; isBorderline?: boolean
+// ── 달력 컴포넌트 ────────────────────────────────────────────────────────
+
+function GridCalendar({
+  issueDates,
+  weeklyDates,
+}: {
+  issueDates: string[]
+  weeklyDates: string[]
 }) {
-  if (score < 4) return null
-  const cls = hasIssue
-    ? score >= 7
-      ? 'bg-red-50 text-red-700 border-red-200'
-      : 'bg-orange-50 text-orange-700 border-orange-200'
-    : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+  const now = new Date()
+  const todayStr = [
+    now.getUTCFullYear(),
+    String(now.getUTCMonth() + 1).padStart(2, '0'),
+    String(now.getUTCDate()).padStart(2, '0'),
+  ].join('-')
+
+  const issueSet = new Set(issueDates)
+  const weeklySet = new Set(weeklyDates)
+
+  const [ty, tm, td] = todayStr.split('-').map(Number)
+  const todayDOW = new Date(Date.UTC(ty, tm - 1, td)).getUTCDay() // 0=일
+
+  // 캘린더 시작 = 오늘 주의 일요일에서 2주 전 일요일
+  const calStart = new Date(Date.UTC(ty, tm - 1, td - todayDOW - 14))
+
+  const toDateStr = (dt: Date) =>
+    [
+      dt.getUTCFullYear(),
+      String(dt.getUTCMonth() + 1).padStart(2, '0'),
+      String(dt.getUTCDate()).padStart(2, '0'),
+    ].join('-')
+
+  // 4주 생성 (이전 2주 + 오늘 포함 주 + 다음 1주)
+  const weeks: string[][] = Array.from({ length: 4 }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const dt = new Date(calStart)
+      dt.setUTCDate(calStart.getUTCDate() + w * 7 + d)
+      return toDateStr(dt)
+    }),
+  )
+
+  const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${cls}`}>
-      {hasIssue && <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />}
-      {score}점
-    </span>
+    <div>
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 mb-1">
+        {DAY_LABELS.map((label, i) => (
+          <div
+            key={label}
+            className={`text-center text-[11px] py-0.5 font-medium ${
+              i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
+            }`}
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* 날짜 그리드 */}
+      {weeks.map((week, wi) => (
+        <div key={wi} className="grid grid-cols-7 mb-0.5">
+          {week.map((dateStr, di) => {
+            const dayNum = parseInt(dateStr.slice(8), 10)
+            const isToday = dateStr === todayStr
+            const isFuture = dateStr > todayStr
+            const hasIssue = issueSet.has(dateStr)
+            const hasWeekly = weeklySet.has(dateStr)
+            const isSun = di === 0
+            const isSat = di === 6
+
+            const href = !isFuture
+              ? hasIssue
+                ? `/daily/${dateStr}`
+                : hasWeekly
+                  ? `/weekly/${dateStr}`
+                  : null
+              : null
+
+            const cell = (
+              <div
+                className={`flex flex-col items-center py-1.5 rounded select-none ${
+                  isToday ? 'bg-gray-900' : href ? 'hover:bg-gray-100 cursor-pointer' : ''
+                }`}
+              >
+                <span
+                  className={`text-xs font-medium leading-none ${
+                    isToday
+                      ? 'text-white'
+                      : isFuture
+                        ? 'text-gray-300'
+                        : isSun
+                          ? 'text-red-500'
+                          : isSat
+                            ? 'text-blue-500'
+                            : 'text-gray-800'
+                  }`}
+                >
+                  {dayNum}
+                </span>
+                <div className="flex gap-px mt-1 h-1.5 items-center">
+                  {hasIssue && <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />}
+                  {hasWeekly && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
+                  {!hasIssue && !hasWeekly && <span className="w-1.5 h-1.5 shrink-0" />}
+                </div>
+              </div>
+            )
+
+            return href ? (
+              <Link key={dateStr} href={href}>
+                {cell}
+              </Link>
+            ) : (
+              <div key={dateStr}>{cell}</div>
+            )
+          })}
+        </div>
+      ))}
+
+      {/* 범례 */}
+      <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100">
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+          이슈
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+          주간 리포트
+        </span>
+      </div>
+    </div>
   )
 }
 
-function GalleryCard({ issue }: { issue: DailyIssue }) {
-  const base = Math.max(issue.avg_same_weekday ?? 0, issue.avg_7d)
-  const pct  = base > 0 ? ((issue.posts_total - base) / base * 100) : 0
-  const pctStr  = pct > 0 ? `+${pct.toFixed(0)}%` : `${pct.toFixed(0)}%`
-  const pctColor = pct > 100 ? 'text-red-600' : pct > 30 ? 'text-orange-500' : 'text-gray-400'
-  const kws = Array.isArray(issue.keywords) ? issue.keywords.slice(0, 4) : []
+// ── 일간 이슈 행 ─────────────────────────────────────────────────────────
+
+function IssueRow({ issue }: { issue: DailyIssue }) {
+  const isHigh = issue.issue_score >= 7
+  const isMid = issue.has_issue && issue.issue_score < 7
+  const dotCls = isHigh ? 'bg-red-500' : isMid ? 'bg-orange-400' : 'bg-amber-400'
+  const scoreCls = isHigh ? 'text-red-600' : isMid ? 'text-orange-500' : 'text-amber-600'
 
   return (
-    <div className={`bg-white border rounded-lg p-4 space-y-2 ${
-      issue.has_issue ? 'border-red-200' : issue.is_borderline ? 'border-yellow-200' : 'border-gray-200'
-    }`}>
-      <div className="flex items-start justify-between gap-2">
+    <div className="py-2.5 border-b border-gray-100 last:border-0">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-medium truncate">{issue.gallery_name}</span>
-          <ScoreBadge score={issue.issue_score} hasIssue={issue.has_issue} isBorderline={issue.is_borderline} />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${dotCls}`} />
+          <span className="text-sm font-medium text-gray-900 truncate">{issue.gallery_name}</span>
+          {issue.is_borderline && !issue.has_issue && (
+            <span className="text-xs text-gray-400 shrink-0">경계</span>
+          )}
         </div>
-        <div className="text-right shrink-0">
-          <span className="text-sm font-mono">{issue.posts_total}건</span>
-          <span className={`text-xs ml-1 ${pctColor}`}>{pctStr}</span>
-        </div>
+        <span className={`text-sm font-semibold tabular-nums shrink-0 ${scoreCls}`}>
+          {issue.issue_score}점
+        </span>
       </div>
       {issue.ai_summary && (
-        <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{issue.ai_summary}</p>
+        <p className="text-xs text-gray-500 mt-0.5 ml-4 line-clamp-1 leading-relaxed">
+          {issue.ai_summary}
+        </p>
       )}
+    </div>
+  )
+}
+
+// ── 주간 갤러리 카드 ──────────────────────────────────────────────────────
+
+function WeeklyGalleryCard({ g }: { g: WeeklyGallery }) {
+  const kws = Array.isArray(g.keywords) ? g.keywords.slice(0, 5) : []
+  const hasCounts = g.daily_counts && Object.keys(g.daily_counts).length > 0
+  const hasAI =
+    g.ai_summary && g.ai_summary !== '(주간 게시글 10건 미만 — AI 요약 제외)'
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-sm text-gray-900">{g.gallery_name}</span>
+        <span className="text-sm tabular-nums text-gray-500">
+          <span className="text-gray-900 font-semibold">{g.total_posts}</span>건
+        </span>
+      </div>
+
+      {hasCounts && <WeeklyBarChart dailyCounts={g.daily_counts!} />}
+
       {kws.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {kws.map(([kw]) => (
-            <span key={kw} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">#{kw}</span>
+            <span key={kw} className="text-[11px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+              #{kw}
+            </span>
           ))}
         </div>
+      )}
+
+      {hasAI && (
+        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{g.ai_summary}</p>
       )}
     </div>
   )
 }
 
-function CalendarStrip({
-  issueDates, weeklyDates,
-}: { issueDates: string[]; weeklyDates: string[] }) {
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const issueSet  = new Set(issueDates)
-  const weeklySet = new Set(weeklyDates)
-
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(d.getDate() - (29 - i))
-    return d.toISOString().slice(0, 10)
-  })
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-0.5 pb-1" style={{ minWidth: 'max-content' }}>
-        {days.map(day => {
-          const hasIssue  = issueSet.has(day)
-          const hasWeekly = weeklySet.has(day)
-          const isToday   = day === todayStr
-          const m = parseInt(day.slice(5, 7))
-          const d = parseInt(day.slice(8, 10))
-          const href = hasIssue ? `/daily/${day}` : hasWeekly ? `/weekly/${day}` : null
-
-          const inner = (
-            <div className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded min-w-[38px] select-none
-              ${isToday ? 'bg-blue-600 text-white' : href ? 'hover:bg-gray-100 cursor-pointer' : 'text-gray-400 cursor-default'}
-            `}>
-              <span className="text-[9px] leading-none">{m}월</span>
-              <span className="text-sm font-medium leading-none">{d}</span>
-              <div className="flex gap-0.5 h-1.5">
-                {hasIssue  && <span className="w-1.5 h-1.5 rounded-full bg-red-400" />}
-                {hasWeekly && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
-              </div>
-            </div>
-          )
-
-          return href ? (
-            <Link key={day} href={href}>{inner}</Link>
-          ) : (
-            <div key={day}>{inner}</div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+// ── 홈 페이지 ────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
   const [cal, dailyInfo, weeklyInfo] = await Promise.all([
@@ -117,94 +227,109 @@ export default async function HomePage() {
   ])
 
   const latestDate = dailyInfo?.date
-  const issueCount = dailyInfo?.issue_gallery_count
 
-  let dailyIssues: DailyIssue[] = []
-  if (latestDate) {
-    dailyIssues = await getDailyByDate(latestDate).catch(() => [])
-  }
+  const [dailyIssues, weeklyData] = await Promise.all([
+    latestDate ? getDailyByDate(latestDate).catch(() => []) : Promise.resolve([]),
+    weeklyInfo?.week_start
+      ? getWeeklyByWeek(weeklyInfo.week_start).catch(() => null)
+      : Promise.resolve(null),
+  ])
 
-  const issues = dailyIssues.filter(i => i.has_issue || i.is_borderline)
-  const normal = dailyIssues.filter(i => !i.has_issue && !i.is_borderline)
+  const issues = dailyIssues
+    .filter(i => i.has_issue || i.is_borderline)
+    .sort((a, b) => b.issue_score - a.issue_score)
+  const normalCount = dailyIssues.filter(i => !i.has_issue && !i.is_borderline).length
+
+  const weeklyGalleries = weeklyData?.galleries
+    ? [...weeklyData.galleries].sort((a, b) => b.total_posts - a.total_posts)
+    : []
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gray-900 text-white sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-lg">⛏️</span>
-            <div>
-              <h1 className="text-sm font-semibold leading-tight">디씨곡괭이 정련소</h1>
-              <p className="text-[11px] text-gray-400 leading-tight">DC인사이드 키우기 장르 동향 분석</p>
-            </div>
+      <Nav active="home" />
+
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+        {/* 상단: 달력(좌) + 일간 이슈(우) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,5fr)_7fr] gap-4 items-start">
+
+          {/* 달력 */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h2 className="text-xs text-gray-400 font-medium mb-3">캘린더</h2>
+            <GridCalendar issueDates={cal.issue_dates} weeklyDates={cal.weekly_dates} />
           </div>
-          <div className="text-right text-xs text-gray-400 space-y-0.5">
-            {latestDate && <div>{fmt(latestDate)} 기준</div>}
-            {issueCount != null && <div>이슈 {issueCount}개 갤러리</div>}
+
+          {/* 일간 이슈 패널 */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h2 className="text-xs text-gray-400 font-medium">
+                  {latestDate ? `${fmt(latestDate)} 일간 이슈` : '일간 이슈'}
+                </h2>
+                {issues.filter(i => i.has_issue).length > 0 && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    이슈 {issues.filter(i => i.has_issue).length}개 갤러리 감지
+                  </p>
+                )}
+              </div>
+              {latestDate && (
+                <Link
+                  href={`/daily/${latestDate}`}
+                  className="text-xs text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                >
+                  전체 보기 →
+                </Link>
+              )}
+            </div>
+
+            {issues.length > 0 ? (
+              <>
+                <div>
+                  {issues.map(i => (
+                    <IssueRow key={i.gallery_id} issue={i} />
+                  ))}
+                </div>
+                {normalCount > 0 && (
+                  <p className="text-xs text-gray-400 mt-2">그 외 {normalCount}개 갤러리 정상</p>
+                )}
+              </>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-sm text-gray-400">
+                  {latestDate ? '이슈 갤러리 없음' : '데이터 없음'}
+                </p>
+                {normalCount > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    전체 {normalCount}개 갤러리 정상 운영 중
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-
-        {/* Calendar */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide">최근 30일</h2>
-            <div className="flex items-center gap-3 text-[11px] text-gray-400">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />이슈
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />주간
-              </span>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <CalendarStrip issueDates={cal.issue_dates} weeklyDates={cal.weekly_dates} />
-          </div>
-        </section>
-
-        {/* Latest daily */}
-        {latestDate && (
+        {/* 주간 갤러리 동향 */}
+        {weeklyGalleries.length > 0 && weeklyInfo && (
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">{fmt(latestDate)} 일간 현황</h2>
-              <Link href={`/daily/${latestDate}`} className="text-sm text-blue-600 hover:underline">
-                전체 보기 →
-              </Link>
-            </div>
-            {issues.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {issues.map(i => <GalleryCard key={i.gallery_id} issue={i} />)}
-              </div>
-            ) : (
-              <div className="bg-white border border-gray-200 rounded-lg p-10 text-center text-gray-400 text-sm">
-                이슈 없음
-              </div>
-            )}
-            {normal.length > 0 && (
-              <p className="mt-2 text-xs text-gray-400">그 외 {normal.length}개 갤러리 정상</p>
-            )}
-          </section>
-        )}
-
-        {/* Weekly link */}
-        {weeklyInfo?.week_start && (
-          <section>
-            <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-baseline justify-between mb-3">
               <div>
-                <p className="text-xs text-gray-400 mb-0.5">최신 주간 리포트</p>
-                <p className="font-medium text-sm">
-                  {fmt(weeklyInfo.week_start)} ~ {fmt(weeklyInfo.week_end ?? '')}
+                <h2 className="text-sm font-semibold text-gray-900">이번 주 갤러리 동향</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {fmt(weeklyInfo.week_start)} ~ {fmt(weeklyInfo.week_end ?? '')} ·{' '}
+                  {weeklyGalleries.length}개 갤러리
                 </p>
               </div>
               <Link
                 href={`/weekly/${weeklyInfo.week_start}`}
-                className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
               >
-                리포트 보기
+                전체 보기 →
               </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {weeklyGalleries.map(g => (
+                <WeeklyGalleryCard key={g.gallery_id} g={g} />
+              ))}
             </div>
           </section>
         )}
