@@ -52,6 +52,27 @@ def _issue_posts(posts: list[dict], n: int = 5) -> list[dict]:
     return result
 
 
+def _size_thresholds(baseline: float) -> tuple[
+    tuple[int, int, int],   # ② 단일 게시글 댓글 기준 (low/mid/high)
+    int,                    # ③ 바이럴 판정 댓글 수 기준
+    tuple[int, int, int],   # ③ 화제 게시글 수 기준 (low/mid/high)
+]:
+    """
+    갤러리 일평균 게시량(기준선)에 따른 화제성·확산 임계값 반환.
+    소규모 갤러리가 절댓값 기준에서 구조적으로 불리한 문제를 보정.
+
+    소규모 (< 30건): 댓글 5/12/25 · 5개↑×1/2/3개
+    중규모 (30~100): 댓글 10/20/35 · 8개↑×2/3/4개
+    대규모 (100+):   댓글 15/30/50 · 10개↑×2/3/5개 (기존값 유지)
+    """
+    if baseline < 30:
+        return (5, 12, 25), 5, (1, 2, 3)
+    elif baseline < 100:
+        return (10, 20, 35), 8, (2, 3, 4)
+    else:
+        return (15, 30, 50), 10, (2, 3, 5)
+
+
 def _calc_issue_score(
     posts_today: list[dict],
     count_today: int,
@@ -62,23 +83,25 @@ def _calc_issue_score(
     """
     이슈 점수 산출 (최대 10점)
 
-    ① 게시량 급증 (0~4점): 갤러리 규모에 비례한 기준선 + 증분 조건
-       - 동요일 4주 평균이 있으면 우선 사용 (요일 패턴 보정)
-       - 소규모 갤러리: min_delta = max(3, baseline * 0.3) 으로 감도 보정
-    ② 단일 게시글 화제성 (0~3점): 상위 게시글 댓글 수
-    ③ 바이럴 확산 (0~3점): 댓글 10개 이상 게시글 복수 존재 여부
+    ① 게시량 급증 (0~4점): 기준선 대비 ratio × delta 이중 조건
+       - 기준선 = 동요일 4주 평균(우선) 또는 7일 단순 평균
+       - min_delta = max(3, baseline × 0.3) 으로 소규모 감도 보정
+    ② 단일 게시글 화제성 (0~3점): 최다 댓글 게시글 — 갤러리 규모별 기준
+    ③ 바이럴 확산 (0~3점): 화제 게시글 복수 여부 — 갤러리 규모별 기준
     ④ 모멘텀 보너스 (0~1점): 3일 이동평균도 기준선 대비 30% 이상 상승 중
     """
     score = 0
 
-    # 요일 보정 기준선 (동요일 4주 평균이 있으면 우선)
+    # 요일 보정 기준선
     baseline = avg_same_weekday if avg_same_weekday > 0 else avg_7d
+    # 기준선 없을 때(신규 갤러리)는 오늘 게시량으로 규모 추정
+    size_ref = baseline if baseline > 0 else float(count_today)
 
     # ① 게시량 급증
     if baseline > 0:
         ratio     = count_today / baseline
         delta     = count_today - baseline
-        min_delta = max(3.0, baseline * 0.3)   # 소규모 갤러리 감도 보정
+        min_delta = max(3.0, baseline * 0.3)
         if ratio >= 3.0 and delta >= min_delta * 2:
             score += 4
         elif ratio >= 2.5 and delta >= min_delta * 1.5:
@@ -88,27 +111,30 @@ def _calc_issue_score(
         elif ratio >= 1.5 and delta >= min_delta * 0.5:
             score += 1
 
-    # ② 단일 게시글 화제성 (상한 3점 — 구 5점에서 하향)
+    # 규모별 임계값 결정
+    t2, viral_th, t3 = _size_thresholds(size_ref)
+
+    # ② 단일 게시글 화제성
     if posts_today:
         top = sorted(posts_today, key=_engagement, reverse=True)
         t1_comments = int(top[0].get("댓글수", 0) or 0)
-        if t1_comments >= 50:
+        if t1_comments >= t2[2]:
             score += 3
-        elif t1_comments >= 30:
+        elif t1_comments >= t2[1]:
             score += 2
-        elif t1_comments >= 15:
+        elif t1_comments >= t2[0]:
             score += 1
 
-    # ③ 바이럴 확산 (상한 3점 — 구 2점에서 상향)
-    hot_posts = sum(1 for p in posts_today if int(p.get("댓글수", 0) or 0) >= 10)
-    if hot_posts >= 5:
+    # ③ 바이럴 확산
+    hot_posts = sum(1 for p in posts_today if int(p.get("댓글수", 0) or 0) >= viral_th)
+    if hot_posts >= t3[2]:
         score += 3
-    elif hot_posts >= 3:
+    elif hot_posts >= t3[1]:
         score += 2
-    elif hot_posts >= 2:
+    elif hot_posts >= t3[0]:
         score += 1
 
-    # ④ 모멘텀 보너스 (3일 이동평균도 기준선 대비 30% 이상 상승)
+    # ④ 모멘텀 보너스
     if momentum_avg > 0 and baseline > 0 and momentum_avg > baseline * 1.3:
         score += 1
 
@@ -150,8 +176,10 @@ def _analyze_gallery(
 
     if verbose:
         flag = "이슈" if has_issue else ("경계" if is_borderline else "정상")
+        baseline_val = avg_same_weekday if avg_same_weekday > 0 else avg_7d
+        size_label = "소규모" if baseline_val < 30 else ("중규모" if baseline_val < 100 else "대규모")
         print(
-            f"  {gallery_name}: {count_today}건 "
+            f"  {gallery_name} [{size_label}]: {count_today}건 "
             f"(7일평균 {avg_7d:.0f} / 동요일평균 {avg_same_weekday:.0f}) "
             f"점수:{issue_score} {flag}",
             flush=True,
