@@ -103,9 +103,9 @@ export default async function ReportsPage() {
                           )}
                         </span>
                       </div>
-                      {item.top_galleries.length > 0 && (
+                      {item.galleries.length > 0 && (
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {item.top_galleries.map(g => (
+                          {item.galleries.map(g => (
                             <span key={g.name} className="text-xs text-gray-500">
                               {g.name}{' '}
                               <span className={`tabular-nums font-medium ${hasHighIssue ? 'text-red-500' : 'text-orange-500'}`}>
