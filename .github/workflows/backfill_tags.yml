@@ -1,0 +1,45 @@
+name: Backfill temperature_tag / issue_cause
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '처리할 최대 행 수 (0=전체)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'dry-run (대상 목록만 출력, 실제 쓰기 안 함)'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backfill
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.limit }}" != "0" ]; then
+            ARGS="--limit ${{ github.event.inputs.limit }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python backfill_tags.py $ARGS
