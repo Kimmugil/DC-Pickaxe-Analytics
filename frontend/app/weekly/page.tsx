@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getWeeklyListWithInfo } from '@/lib/data'
+import { getTexts, tp } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
 
 function fmt(d: string) {
@@ -9,21 +10,22 @@ function fmt(d: string) {
 }
 
 export default async function WeeklyListPage() {
-  let list: Awaited<ReturnType<typeof getWeeklyListWithInfo>> = []
-  try {
-    list = await getWeeklyListWithInfo()
-  } catch {}
+  const [t, list] = await Promise.all([
+    getTexts(),
+    getWeeklyListWithInfo().catch(() => [] as Awaited<ReturnType<typeof getWeeklyListWithInfo>>),
+  ])
+
+  const title = t['weekly_list.title'] ?? '주간 리포트 목록'
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Nav
-        back={{ href: '/reports', label: '리포트 목록' }}
-        title="주간 리포트 목록"
-      />
+      <Nav back={{ href: '/reports' }} title={title} />
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         {list.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-20">데이터 없음</p>
+          <p className="text-gray-400 text-sm text-center py-20">
+            {t['common.no_data'] ?? '데이터 없음'}
+          </p>
         ) : (
           <div className="space-y-1.5">
             {list.map(item => (
@@ -37,15 +39,15 @@ export default async function WeeklyListPage() {
                     <span className="text-sm font-medium text-gray-900">
                       {fmt(item.week_start)} ~ {fmt(item.week_end)}
                     </span>
-                    <span className="text-xs text-gray-400">{item.gallery_count}개 갤러리</span>
+                    <span className="text-xs text-gray-400">
+                      {tp(t, 'common.gallery_count', { count: item.gallery_count }, '{count}개 갤러리')}
+                    </span>
                   </div>
                   {item.ai_summary && (
                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.ai_summary}</p>
                   )}
                 </div>
-                <span className="text-gray-300 group-hover:text-gray-500 text-sm ml-3 shrink-0 self-center transition-colors">
-                  →
-                </span>
+                <span className="text-gray-300 group-hover:text-gray-500 text-sm ml-3 shrink-0 self-center transition-colors">→</span>
               </Link>
             ))}
           </div>

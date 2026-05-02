@@ -3,6 +3,7 @@ import type { WeeklyGallery, TopPost } from '@/types'
 import { notFound } from 'next/navigation'
 import { WeeklyBarChart } from '@/components/WeeklyBarChart'
 import { getWeeklyByWeek } from '@/lib/data'
+import { getTexts, tp } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
 
 interface Props { params: Promise<{ week: string }> }
@@ -13,7 +14,7 @@ function fmt(d: string) {
   return `${m}월 ${day}일`
 }
 
-function PostList({ posts }: { posts: TopPost[] }) {
+function PostList({ posts, t }: { posts: TopPost[]; t: Record<string, string> }) {
   return (
     <div className="space-y-2">
       {posts.map((p, i) => (
@@ -24,13 +25,13 @@ function PostList({ posts }: { posts: TopPost[] }) {
               href={p.링크}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-800 hover:text-gray-900 hover:underline line-clamp-1"
+              className="text-gray-800 hover:underline line-clamp-1"
             >
               {p.제목}
             </a>
             <div className="text-xs text-gray-400 mt-0.5 flex gap-2.5 tabular-nums">
-              <span>댓글 {p.댓글수}</span>
-              <span>추천 {p.추천수}</span>
+              <span>{tp(t, 'common.comment_count', { count: p.댓글수 }, '댓글 {count}')}</span>
+              <span>{tp(t, 'common.like_count', { count: p.추천수 }, '추천 {count}')}</span>
             </div>
           </div>
         </div>
@@ -39,7 +40,7 @@ function PostList({ posts }: { posts: TopPost[] }) {
   )
 }
 
-function GalleryWeeklyCard({ g }: { g: WeeklyGallery }) {
+function GalleryWeeklyCard({ g, t }: { g: WeeklyGallery; t: Record<string, string> }) {
   const kws = Array.isArray(g.keywords) ? g.keywords : []
   const tops = Array.isArray(g.top_posts) ? g.top_posts : []
   const hasCounts = g.daily_counts && Object.keys(g.daily_counts).length > 0
@@ -50,13 +51,16 @@ function GalleryWeeklyCard({ g }: { g: WeeklyGallery }) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900">{g.gallery_name}</h3>
         <span className="text-sm text-gray-500 tabular-nums">
-          총 <span className="text-gray-900 font-semibold">{g.total_posts}</span>건
+          {t['weekly_detail.total_label'] ?? '총'}{' '}
+          <span className="text-gray-900 font-semibold">{g.total_posts}</span>건
         </span>
       </div>
 
       {hasCounts && (
         <div>
-          <p className="text-xs text-gray-400 font-medium mb-1">일별 게시글</p>
+          <p className="text-xs text-gray-400 font-medium mb-1">
+            {t['weekly_detail.daily_posts_title'] ?? '일별 게시글'}
+          </p>
           <WeeklyBarChart dailyCounts={g.daily_counts!} />
         </div>
       )}
@@ -67,7 +71,9 @@ function GalleryWeeklyCard({ g }: { g: WeeklyGallery }) {
 
       {kws.length > 0 && (
         <div>
-          <p className="text-xs text-gray-400 font-medium mb-1.5">주요 키워드</p>
+          <p className="text-xs text-gray-400 font-medium mb-1.5">
+            {t['common.keywords_title'] ?? '주요 키워드'}
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {kws.slice(0, 8).map(([kw, cnt]) => (
               <span key={kw} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
@@ -81,9 +87,9 @@ function GalleryWeeklyCard({ g }: { g: WeeklyGallery }) {
       {tops.length > 0 && (
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2">
-            인기 게시글 TOP {tops.length}
+            {tp(t, 'weekly_detail.top_posts_title', { count: tops.length }, '인기 게시글 TOP {count}')}
           </p>
-          <PostList posts={tops} />
+          <PostList posts={tops} t={t} />
         </div>
       )}
     </div>
@@ -92,45 +98,45 @@ function GalleryWeeklyCard({ g }: { g: WeeklyGallery }) {
 
 export default async function WeeklyDetailPage({ params }: Props) {
   const { week } = await params
-  let data
-  try {
-    data = await getWeeklyByWeek(week)
-  } catch {
-    notFound()
-  }
+
+  const [t, data] = await Promise.all([
+    getTexts(),
+    getWeeklyByWeek(week).catch(() => null),
+  ])
+
+  if (!data) notFound()
 
   const { galleries, overall } = data
   const sorted = [...galleries].sort((a, b) => b.total_posts - a.total_posts)
 
+  const suffix = t['weekly_detail.page_title_suffix'] ?? '주간 리포트'
   const titleStr = overall.week_start
-    ? `${fmt(overall.week_start)} ~ ${fmt(overall.week_end ?? week)} 주간 리포트`
-    : `${week} 주간 리포트`
+    ? `${fmt(overall.week_start)} ~ ${fmt(overall.week_end ?? week)} ${suffix}`
+    : `${week} ${suffix}`
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav
-        back={{ href: '/reports', label: '리포트 목록' }}
+        back={{ href: '/reports' }}
         title={titleStr}
-        subtitle={`${galleries.length}개 갤러리`}
+        subtitle={tp(t, 'common.gallery_count', { count: galleries.length }, '{count}개 갤러리')}
       />
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-        {/* 종합 요약 */}
         {overall.ai_summary && (
           <section className="bg-white border border-gray-200 rounded-lg p-5">
-            <h2 className="text-xs text-gray-400 font-medium mb-3">종합 요약</h2>
+            <h2 className="text-xs text-gray-400 font-medium mb-3">
+              {t['weekly_detail.summary_title'] ?? '종합 요약'}
+            </h2>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
               {overall.ai_summary}
             </p>
           </section>
         )}
 
-        {/* 갤러리 카드 */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sorted.map(g => (
-            <GalleryWeeklyCard key={g.gallery_id} g={g} />
-          ))}
+          {sorted.map(g => <GalleryWeeklyCard key={g.gallery_id} g={g} t={t} />)}
         </section>
 
       </main>

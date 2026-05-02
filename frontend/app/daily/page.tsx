@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getDailyIssueList } from '@/lib/data'
+import { getTexts, tp } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
 
 function fmt(d: string) {
@@ -9,21 +10,22 @@ function fmt(d: string) {
 }
 
 export default async function DailyListPage() {
-  let list: Awaited<ReturnType<typeof getDailyIssueList>> = []
-  try {
-    list = await getDailyIssueList()
-  } catch {}
+  const [t, list] = await Promise.all([
+    getTexts(),
+    getDailyIssueList().catch(() => [] as Awaited<ReturnType<typeof getDailyIssueList>>),
+  ])
+
+  const title = t['daily_list.title'] ?? '일간 이슈 목록'
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Nav
-        back={{ href: '/reports', label: '리포트 목록' }}
-        title="일간 이슈 목록"
-      />
+      <Nav back={{ href: '/reports' }} title={title} />
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         {list.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-20">데이터 없음</p>
+          <p className="text-gray-400 text-sm text-center py-20">
+            {t['common.no_data'] ?? '데이터 없음'}
+          </p>
         ) : (
           <div className="space-y-1.5">
             {list.map(item => (
@@ -47,12 +49,12 @@ export default async function DailyListPage() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0 ml-3">
                   <span className="text-xs text-gray-400">
-                    이슈 {item.issue_count}개
-                    {item.borderline_count > 0 && ` · 경계 ${item.borderline_count}개`}
+                    {tp(t, 'common.issue_count', { count: item.issue_count }, '이슈 {count}개')}
+                    {item.borderline_count > 0 && (
+                      <> · {tp(t, 'common.borderline_count', { count: item.borderline_count }, '경계 {count}개')}</>
+                    )}
                   </span>
-                  <span className="text-gray-300 group-hover:text-gray-500 text-sm transition-colors">
-                    →
-                  </span>
+                  <span className="text-gray-300 group-hover:text-gray-500 text-sm transition-colors">→</span>
                 </div>
               </Link>
             ))}

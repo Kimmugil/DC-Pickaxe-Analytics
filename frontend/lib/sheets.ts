@@ -58,3 +58,9 @@ export const getWeeklyOverallRaw = unstable_cache(
   ['sheet:weekly_overall'],
   { revalidate: 300 },
 )
+
+export const getUITextsRaw = unstable_cache(
+  () => fetchSheet('ui_texts'),
+  ['sheet:ui_texts'],
+  { revalidate: 300 },
+)

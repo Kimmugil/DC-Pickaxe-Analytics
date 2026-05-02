@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { DailyIssue, TopPost } from '@/types'
 import { notFound } from 'next/navigation'
 import { getDailyByDate } from '@/lib/data'
+import { getTexts, tp } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
 
 interface Props { params: Promise<{ date: string }> }
@@ -14,27 +15,21 @@ function fmt(d: string) {
 
 function ScoreDot({ score, hasIssue }: { score: number; hasIssue: boolean }) {
   const cls = hasIssue
-    ? score >= 7
-      ? 'bg-red-500'
-      : 'bg-orange-400'
+    ? score >= 7 ? 'bg-red-500' : 'bg-orange-400'
     : 'bg-amber-400'
   return <span className={`w-2 h-2 rounded-full shrink-0 ${cls}`} />
 }
 
 function ScoreTag({ score, hasIssue }: { score: number; hasIssue: boolean }) {
   const cls = hasIssue
-    ? score >= 7
-      ? 'text-red-600'
-      : 'text-orange-500'
+    ? score >= 7 ? 'text-red-600' : 'text-orange-500'
     : 'text-amber-600'
   return (
-    <span className={`text-xs font-semibold tabular-nums ${cls}`}>
-      {score}점
-    </span>
+    <span className={`text-xs font-semibold tabular-nums ${cls}`}>{score}점</span>
   )
 }
 
-function PostList({ posts }: { posts: TopPost[] }) {
+function PostList({ posts, t }: { posts: TopPost[]; t: Record<string, string> }) {
   return (
     <div className="space-y-2">
       {posts.map((p, i) => (
@@ -45,14 +40,16 @@ function PostList({ posts }: { posts: TopPost[] }) {
               href={p.링크}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-800 hover:text-gray-900 hover:underline line-clamp-1"
+              className="text-gray-800 hover:underline line-clamp-1"
             >
               {p.제목}
             </a>
             <div className="text-xs text-gray-400 mt-0.5 flex gap-2.5 tabular-nums">
-              <span>댓글 {p.댓글수}</span>
-              <span>추천 {p.추천수}</span>
-              {p.조회수 > 0 && <span>조회 {p.조회수.toLocaleString()}</span>}
+              <span>{tp(t, 'common.comment_count', { count: p.댓글수 }, '댓글 {count}')}</span>
+              <span>{tp(t, 'common.like_count', { count: p.추천수 }, '추천 {count}')}</span>
+              {p.조회수 > 0 && (
+                <span>{tp(t, 'common.view_count', { count: p.조회수.toLocaleString() }, '조회 {count}')}</span>
+              )}
             </div>
           </div>
         </div>
@@ -61,7 +58,7 @@ function PostList({ posts }: { posts: TopPost[] }) {
   )
 }
 
-function GalleryDetail({ issue }: { issue: DailyIssue }) {
+function GalleryDetail({ issue, t }: { issue: DailyIssue; t: Record<string, string> }) {
   const base = Math.max(issue.avg_same_weekday ?? 0, issue.avg_7d)
   const pct = base > 0 ? ((issue.posts_total - base) / base) * 100 : 0
   const kws = Array.isArray(issue.keywords) ? issue.keywords : []
@@ -74,19 +71,22 @@ function GalleryDetail({ issue }: { issue: DailyIssue }) {
           <ScoreDot score={issue.issue_score} hasIssue={issue.has_issue} />
           <h3 className="text-sm font-semibold text-gray-900">{issue.gallery_name}</h3>
           {issue.is_borderline && !issue.has_issue && (
-            <span className="text-xs text-gray-400">경계</span>
+            <span className="text-xs text-gray-400">
+              {t['common.borderline_label'] ?? '경계'}
+            </span>
           )}
           <ScoreTag score={issue.issue_score} hasIssue={issue.has_issue} />
         </div>
         <div className="text-right text-sm text-gray-500">
           <span className="font-semibold text-gray-900 tabular-nums">{issue.posts_total}건</span>
           <span className="text-xs ml-2 text-gray-400 tabular-nums">
-            7일평균 {issue.avg_7d}건
-            {issue.avg_same_weekday ? ` · 동요일 ${issue.avg_same_weekday}건` : ''}
+            {tp(t, 'daily_detail.avg_7d', { count: issue.avg_7d }, '7일평균 {count}건')}
+            {issue.avg_same_weekday
+              ? ` · ${tp(t, 'daily_detail.avg_weekday', { count: issue.avg_same_weekday }, '동요일 {count}건')}`
+              : ''}
             {pct !== 0 && (
               <span className={pct > 0 ? ' text-red-500' : ' text-green-500'}>
-                {' '}
-                ({pct > 0 ? '+' : ''}{pct.toFixed(0)}%)
+                {' '}({pct > 0 ? '+' : ''}{pct.toFixed(0)}%)
               </span>
             )}
           </span>
@@ -99,13 +99,12 @@ function GalleryDetail({ issue }: { issue: DailyIssue }) {
 
       {kws.length > 0 && (
         <div>
-          <p className="text-xs text-gray-400 font-medium mb-1.5">주요 키워드</p>
+          <p className="text-xs text-gray-400 font-medium mb-1.5">
+            {t['common.keywords_title'] ?? '주요 키워드'}
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {kws.map(([kw, cnt]) => (
-              <span
-                key={kw}
-                className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded"
-              >
+              <span key={kw} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
                 #{kw} <span className="text-gray-400 tabular-nums">{cnt}</span>
               </span>
             ))}
@@ -116,9 +115,9 @@ function GalleryDetail({ issue }: { issue: DailyIssue }) {
       {tops.length > 0 && (
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2">
-            화제 게시글 TOP {tops.length}
+            {tp(t, 'daily_detail.top_posts_title', { count: tops.length }, '화제 게시글 TOP {count}')}
           </p>
-          <PostList posts={tops} />
+          <PostList posts={tops} t={t} />
         </div>
       )}
     </div>
@@ -127,48 +126,52 @@ function GalleryDetail({ issue }: { issue: DailyIssue }) {
 
 export default async function DailyDetailPage({ params }: Props) {
   const { date } = await params
-  let issues: DailyIssue[] = []
-  try {
-    issues = await getDailyByDate(date)
-  } catch {
-    notFound()
-  }
+
+  const [t, issues] = await Promise.all([
+    getTexts(),
+    getDailyByDate(date).catch(() => null),
+  ])
+
+  if (issues === null) notFound()
 
   const sorted = [...issues].sort((a, b) => b.issue_score - a.issue_score)
   const issueList = sorted.filter(i => i.has_issue)
   const borderList = sorted.filter(i => !i.has_issue && i.is_borderline)
   const normalList = sorted.filter(i => !i.has_issue && !i.is_borderline)
 
+  const pageTitle = `${fmt(date)} ${t['daily_detail.page_title_suffix'] ?? '일간 체크포인트'}`
+  const pageSubtitle = issueList.length > 0
+    ? tp(t, 'daily_detail.issue_detected', { count: issueList.length }, '이슈 {count}개 갤러리 감지')
+    : undefined
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Nav
-        back={{ href: '/reports', label: '리포트 목록' }}
-        title={`${fmt(date)} 일간 체크포인트`}
-        subtitle={issueList.length > 0 ? `이슈 ${issueList.length}개 갤러리 감지` : undefined}
-      />
+      <Nav back={{ href: '/reports' }} title={pageTitle} subtitle={pageSubtitle} />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {issueList.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs text-gray-400 font-medium">이슈 갤러리</h2>
-            {issueList.map(i => (
-              <GalleryDetail key={i.gallery_id} issue={i} />
-            ))}
+            <h2 className="text-xs text-gray-400 font-medium">
+              {t['daily_detail.section_issue'] ?? '이슈 갤러리'}
+            </h2>
+            {issueList.map(i => <GalleryDetail key={i.gallery_id} issue={i} t={t} />)}
           </section>
         )}
 
         {borderList.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs text-gray-400 font-medium">주목 갤러리 (경계)</h2>
-            {borderList.map(i => (
-              <GalleryDetail key={i.gallery_id} issue={i} />
-            ))}
+            <h2 className="text-xs text-gray-400 font-medium">
+              {t['daily_detail.section_borderline'] ?? '주목 갤러리 (경계)'}
+            </h2>
+            {borderList.map(i => <GalleryDetail key={i.gallery_id} issue={i} t={t} />)}
           </section>
         )}
 
         {normalList.length > 0 && (
           <section>
-            <h2 className="text-xs text-gray-400 font-medium mb-2">정상 갤러리</h2>
+            <h2 className="text-xs text-gray-400 font-medium mb-2">
+              {t['daily_detail.section_normal'] ?? '정상 갤러리'}
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {normalList.map(i => (
                 <div
@@ -186,7 +189,9 @@ export default async function DailyDetailPage({ params }: Props) {
         )}
 
         {issues.length === 0 && (
-          <div className="text-center py-20 text-gray-400 text-sm">데이터 없음</div>
+          <div className="text-center py-20 text-gray-400 text-sm">
+            {t['common.no_data'] ?? '데이터 없음'}
+          </div>
         )}
       </main>
     </div>
