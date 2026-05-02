@@ -237,6 +237,85 @@ export async function getWeeklyListWithInfo(): Promise<{
     .sort((a, b) => b.week_start.localeCompare(a.week_start))
 }
 
+export async function getGalleryList(): Promise<{
+  id: string
+  name: string
+  recent_issue_days: number
+  latest_issue: { score: number; date: string } | null
+}[]> {
+  const rows = await getDailyIssuesRaw()
+
+  const nameMap = new Map<string, string>()
+  const issueDates = new Map<string, Set<string>>()
+  const latestIssue = new Map<string, { score: number; date: string }>()
+
+  const cutoff = new Date()
+  cutoff.setUTCDate(cutoff.getUTCDate() - 28)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+
+  for (const r of rows) {
+    if (!r.gallery_id) continue
+    if (r.gallery_name) nameMap.set(r.gallery_id, r.gallery_name)
+    if (!parseBool(r.has_issue)) continue
+    if (r.date && r.date >= cutoffStr) {
+      if (!issueDates.has(r.gallery_id)) issueDates.set(r.gallery_id, new Set())
+      issueDates.get(r.gallery_id)!.add(r.date)
+    }
+    const existing = latestIssue.get(r.gallery_id)
+    if (!existing || (r.date ?? '') > existing.date) {
+      latestIssue.set(r.gallery_id, {
+        score: Math.round(parseNum(r.issue_score)),
+        date: r.date ?? '',
+      })
+    }
+  }
+
+  return Array.from(nameMap.entries())
+    .map(([id, name]) => ({
+      id,
+      name,
+      recent_issue_days: issueDates.get(id)?.size ?? 0,
+      latest_issue: latestIssue.get(id) ?? null,
+    }))
+    .sort((a, b) => b.recent_issue_days - a.recent_issue_days || a.name.localeCompare(b.name))
+}
+
+export async function getGalleryHistory(galleryId: string): Promise<{
+  gallery_name: string
+  issues: DailyIssue[]
+  weeklies: WeeklyGallery[]
+}> {
+  const [dailyRows, weeklyRows] = await Promise.all([
+    getDailyIssuesRaw(),
+    getWeeklyGalleriesRaw(),
+  ])
+
+  const myDaily = dailyRows.filter(r => r.gallery_id === galleryId)
+  const gallery_name =
+    myDaily.find(r => r.gallery_name)?.gallery_name ??
+    weeklyRows.find(r => r.gallery_id === galleryId)?.gallery_name ??
+    galleryId
+
+  const issues = myDaily
+    .filter(r => parseBool(r.has_issue) || parseBool(r.is_borderline))
+    .map(r => toDaily(r))
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  // gallery_id 기준 최신 run만 유지 (week_start 별)
+  const weekMap = new Map<string, Record<string, string>>()
+  for (const r of weeklyRows.filter(r => r.gallery_id === galleryId)) {
+    const existing = weekMap.get(r.week_start)
+    if (!existing || (r.run_id ?? '') > (existing.run_id ?? '')) {
+      weekMap.set(r.week_start, r)
+    }
+  }
+  const weeklies = Array.from(weekMap.values())
+    .map(toWeekly)
+    .sort((a, b) => b.week_start.localeCompare(a.week_start))
+
+  return { gallery_name, issues, weeklies }
+}
+
 export async function getWeeklyByWeek(weekStart: string): Promise<WeeklyData> {
   const [galRows, overallRows] = await Promise.all([
     getWeeklyGalleriesRaw(),

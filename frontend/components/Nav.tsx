@@ -5,7 +5,7 @@ interface NavProps {
   back?: { href: string; label?: string }
   title?: string
   subtitle?: string
-  active?: 'home' | 'reports'
+  active?: 'home' | 'reports' | 'gallery'
 }
 
 export async function Nav({ back, title, subtitle, active }: NavProps) {
@@ -66,6 +66,16 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
             }`}
           >
             {t['nav.reports'] ?? '리포트 목록'}
+          </Link>
+          <Link
+            href="/gallery"
+            className={`px-3 py-1.5 rounded transition-colors ${
+              active === 'gallery'
+                ? 'text-white bg-gray-700'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            {t['nav.gallery'] ?? '갤러리'}
           </Link>
         </nav>
 
