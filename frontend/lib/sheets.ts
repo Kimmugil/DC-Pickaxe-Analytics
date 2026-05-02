@@ -48,14 +48,28 @@ function getMasterSheetId(): string | null {
   return m?.[1] ?? null
 }
 
-/** 관리자 비밀번호 — 마스터시트 config!B1, 없으면 ADMIN_PASSWORD 환경변수 */
+/** 관리자 비밀번호 — Analytics시트 config!B1 우선, 없으면 마스터시트, 없으면 ADMIN_PASSWORD 환경변수 */
 export async function getAdminPassword(): Promise<string> {
-  const id = getMasterSheetId()
-  if (id) {
+  const analyticsId = process.env.ANALYTICS_SPREADSHEET_ID
+  if (analyticsId) {
     try {
       const sheets = createClient()
       const res = await sheets.spreadsheets.values.get({
-        spreadsheetId: id,
+        spreadsheetId: analyticsId,
+        range: 'config!B1',
+      })
+      const val = (res.data.values?.[0]?.[0] ?? '') as string
+      if (val) return val
+    } catch {
+      // fallthrough
+    }
+  }
+  const masterId = getMasterSheetId()
+  if (masterId) {
+    try {
+      const sheets = createClient()
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: masterId,
         range: 'config!B1',
       })
       const val = (res.data.values?.[0]?.[0] ?? '') as string

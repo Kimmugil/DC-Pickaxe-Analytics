@@ -6,6 +6,10 @@
 import type { DailyIssue, WeeklyGallery, WeeklyData } from '@/types'
 import { getDailyIssuesRaw, getWeeklyGalleriesRaw, getWeeklyOverallRaw } from './sheets'
 
+export type TimelineItem =
+  | { kind: 'issue';  date: string; issue_count: number; max_score: number; galleries: { id: string; name: string; score: number }[] }
+  | { kind: 'weekly'; date: string; week_start: string; week_end: string; ai_summary: string; gallery_count: number }
+
 // ── 파싱 헬퍼 ──────────────────────────────────────────────────────────
 
 function parseField(v: string | undefined): unknown {
@@ -81,15 +85,25 @@ export async function getCalendarData() {
     getDailyIssuesRaw(),
     getWeeklyGalleriesRaw(),
   ])
-  const issueDates = [...new Set(
-    daily.filter(r => parseBool(r.has_issue)).map(r => r.date).filter(Boolean),
-  )].sort((a, b) => b.localeCompare(a))
 
-  const weeklyDates = [...new Set(
-    weekly.map(r => r.week_start).filter(Boolean),
-  )].sort((a, b) => b.localeCompare(a))
+  const issuesByDate: Record<string, { id: string; name: string; score: number }[]> = {}
+  for (const r of daily) {
+    if (!r.date || !parseBool(r.has_issue)) continue
+    if (!issuesByDate[r.date]) issuesByDate[r.date] = []
+    issuesByDate[r.date].push({
+      id:    r.gallery_id ?? '',
+      name:  r.gallery_name ?? '',
+      score: Math.round(parseNum(r.issue_score)),
+    })
+  }
+  for (const arr of Object.values(issuesByDate)) {
+    arr.sort((a, b) => b.score - a.score)
+  }
 
-  return { issue_dates: issueDates, weekly_dates: weeklyDates }
+  const weeklyDates = [...new Set(weekly.map(r => r.week_start).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a))
+
+  return { issuesByDate, weeklyDates }
 }
 
 export async function getLatestDailyInfo() {
@@ -406,4 +420,73 @@ export async function getWeeklyByWeek(weekStart: string): Promise<WeeklyData> {
         }
       : {},
   }
+}
+
+export async function getIssueFeed(limit = 80): Promise<DailyIssue[]> {
+  const rows = await getDailyIssuesRaw()
+  return rows
+    .filter(r => parseBool(r.has_issue) || parseBool(r.is_borderline))
+    .map(r => toDaily(r))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.issue_score - a.issue_score)
+    .slice(0, limit)
+}
+
+export async function getAllTimeline(limit = 120): Promise<TimelineItem[]> {
+  const [dailyRows, overallRows, galRows] = await Promise.all([
+    getDailyIssuesRaw(),
+    getWeeklyOverallRaw(),
+    getWeeklyGalleriesRaw(),
+  ])
+
+  // Per-date issue groups
+  const byDate = new Map<string, Record<string, string>[]>()
+  for (const r of dailyRows) {
+    if (!r.date || !parseBool(r.has_issue)) continue
+    if (!byDate.has(r.date)) byDate.set(r.date, [])
+    byDate.get(r.date)!.push(r)
+  }
+
+  const issueItems: TimelineItem[] = Array.from(byDate.entries()).map(([date, rows]) => {
+    const sorted = [...rows].sort((a, b) => parseNum(b.issue_score) - parseNum(a.issue_score))
+    return {
+      kind: 'issue',
+      date,
+      issue_count: rows.length,
+      max_score: Math.round(parseNum(sorted[0]?.issue_score ?? '0')),
+      galleries: sorted.map(r => ({
+        id:    r.gallery_id ?? '',
+        name:  r.gallery_name ?? '',
+        score: Math.round(parseNum(r.issue_score)),
+      })),
+    }
+  })
+
+  // Gallery count per week
+  const weekGalCount = new Map<string, number>()
+  for (const r of galRows) {
+    if (!r.week_start || !r.gallery_id) continue
+    weekGalCount.set(r.week_start, (weekGalCount.get(r.week_start) ?? 0) + 1)
+  }
+
+  // Best overall row per week
+  const overallMap = new Map<string, Record<string, string>>()
+  for (const r of overallRows) {
+    if (!r.week_start) continue
+    const ex = overallMap.get(r.week_start)
+    if (!ex || (r.run_id ?? '') > (ex.run_id ?? '')) overallMap.set(r.week_start, r)
+  }
+
+  const weeklyItems: TimelineItem[] = Array.from(overallMap.values()).map(r => ({
+    kind: 'weekly',
+    date: r.week_start,
+    week_start: r.week_start,
+    week_end: r.week_end ?? '',
+    ai_summary: r.ai_summary ?? '',
+    gallery_count: weekGalCount.get(r.week_start) ?? 0,
+  }))
+
+  return [...issueItems, ...weeklyItems]
+    .filter(e => e.date)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit)
 }

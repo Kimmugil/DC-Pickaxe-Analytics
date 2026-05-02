@@ -38,7 +38,7 @@ function IssueEntry({ issue, t }: { issue: DailyIssue; t: Record<string, string>
   const isHigh = issue.issue_score >= 7
 
   return (
-    <div className="flex gap-4">
+    <div id={`issue-${issue.date}`} className="flex gap-4">
       {/* 타임라인 인디케이터 */}
       <div className="flex flex-col items-center shrink-0">
         <div className={`w-3 h-3 rounded-full mt-1 ${isHigh ? 'bg-red-500' : issue.has_issue ? 'bg-orange-400' : 'bg-amber-300'}`} />
