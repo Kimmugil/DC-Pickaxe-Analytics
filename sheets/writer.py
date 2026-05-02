@@ -23,6 +23,7 @@ _HEADERS = {
         "date", "run_id", "gallery_id", "gallery_name",
         "posts_total", "avg_7d", "issue_score", "has_issue",
         "keywords", "top_posts", "ai_summary",
+        "temperature_tag", "issue_cause",
     ],
     "weekly_galleries": [
         "week_start", "week_end", "run_id", "gallery_id", "gallery_name",
@@ -91,6 +92,17 @@ def setup_sheets() -> None:
         print(f"  [삭제] {title}")
 
 
+# ── 헤더 마이그레이션 ─────────────────────────────────────────────────
+
+def _ensure_headers(ws: "gspread.Worksheet", expected: list[str]) -> None:
+    """기존 시트를 지우지 않고 누락된 컬럼만 헤더 행에 추가한다."""
+    current = ws.row_values(1)
+    missing = [h for h in expected if h not in current]
+    if missing:
+        new_headers = current + missing
+        ws.update("A1", [new_headers])
+
+
 # ── 일간 이슈 적재 ────────────────────────────────────────────────────
 
 def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
@@ -99,6 +111,7 @@ def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
     has_issue=0 인 갤러리도 포함 (전체 기록 유지).
     """
     ws = _spreadsheet().worksheet("daily_issues")
+    _ensure_headers(ws, _HEADERS["daily_issues"])
     rows = [
         [
             date, run_id,
@@ -108,6 +121,8 @@ def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
             json.dumps(r.get("keywords", []), ensure_ascii=False),
             json.dumps(r.get("top_posts", []), ensure_ascii=False),
             r.get("ai_summary", ""),
+            r.get("temperature_tag", ""),
+            r.get("issue_cause", ""),
         ]
         for r in results
     ]

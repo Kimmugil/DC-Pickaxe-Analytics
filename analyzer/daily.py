@@ -19,7 +19,10 @@ import pandas as pd
 
 from sheets import reader
 from analyzer import keywords as kw_mod
-from analyzer.ai_summary import summarize_daily_issue, summarize_daily_borderline
+from analyzer.ai_summary import (
+    summarize_daily_issue,
+    summarize_daily_borderline,
+)
 
 
 ISSUE_THRESHOLD      = 5   # 이슈 판정 최소 점수
@@ -167,6 +170,8 @@ def _analyze_gallery(
         "keywords":         keywords,
         "top_posts":        top5,
         "ai_summary":       "",
+        "temperature_tag":  "",
+        "issue_cause":      "",
     }
 
 
@@ -205,6 +210,8 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                 "keywords":         [],
                 "top_posts":        [],
                 "ai_summary":       "",
+                "temperature_tag":  "",
+                "issue_cause":      "",
             })
 
     # 이슈 갤러리 AI 요약
@@ -213,7 +220,7 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
         print(f"\n[AI 요약] 이슈 갤러리 {len(issue_results)}개...", flush=True)
         for r in issue_results:
             try:
-                r["ai_summary"] = summarize_daily_issue(
+                ai = summarize_daily_issue(
                     gallery_name=r["gallery_name"],
                     top_posts=r["top_posts"],
                     keywords=r["keywords"],
@@ -221,8 +228,11 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                     count_today=r["posts_total"],
                     avg_7d=r["avg_7d"],
                 )
+                r["ai_summary"]      = ai.get("summary", "")
+                r["temperature_tag"] = ai.get("temperature_tag", "")
+                r["issue_cause"]     = ai.get("issue_cause", "기타")
                 if verbose:
-                    print(f"  완료: {r['gallery_name']}", flush=True)
+                    print(f"  완료: {r['gallery_name']} [{r['temperature_tag']}]", flush=True)
             except Exception as e:
                 r["ai_summary"] = ""
                 print(f"  AI 요약 실패: {r['gallery_name']} - {e}", flush=True)
@@ -236,7 +246,7 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
         for r in borderline_results:
             try:
                 avg_baseline = max(r["avg_7d"], r.get("avg_same_weekday", 0.0))
-                r["ai_summary"] = summarize_daily_borderline(
+                ai = summarize_daily_borderline(
                     gallery_name=r["gallery_name"],
                     top_posts=r["top_posts"],
                     keywords=r["keywords"],
@@ -244,8 +254,10 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                     count_today=r["posts_total"],
                     avg_baseline=avg_baseline,
                 )
+                r["ai_summary"]      = ai.get("summary", "")
+                r["temperature_tag"] = ai.get("temperature_tag", "")
                 if verbose:
-                    print(f"  완료(경계): {r['gallery_name']}", flush=True)
+                    print(f"  완료(경계): {r['gallery_name']} [{r['temperature_tag']}]", flush=True)
             except Exception as e:
                 r["ai_summary"] = ""
                 print(f"  AI 요약 실패(경계): {r['gallery_name']} - {e}", flush=True)

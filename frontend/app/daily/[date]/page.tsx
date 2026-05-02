@@ -13,6 +13,21 @@ function fmt(d: string) {
   return `${y}년 ${m}월 ${day}일`
 }
 
+const CAUSE_STYLE: Record<string, string> = {
+  컨텐츠: 'text-blue-600 bg-blue-50',
+  운영:   'text-orange-600 bg-orange-50',
+  화제:   'text-purple-600 bg-purple-50',
+}
+
+function IssueCauseBadge({ cause }: { cause: string }) {
+  const cls = CAUSE_STYLE[cause] ?? 'text-gray-500 bg-gray-100'
+  return (
+    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${cls}`}>
+      {cause}
+    </span>
+  )
+}
+
 function ScoreDot({ score, hasIssue }: { score: number; hasIssue: boolean }) {
   const cls = hasIssue
     ? score >= 7 ? 'bg-red-500' : 'bg-orange-400'
@@ -76,6 +91,14 @@ function GalleryDetail({ issue, t }: { issue: DailyIssue; t: Record<string, stri
             </span>
           )}
           <ScoreTag score={issue.issue_score} hasIssue={issue.has_issue} />
+          {issue.temperature_tag && (
+            <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+              {issue.temperature_tag}
+            </span>
+          )}
+          {issue.issue_cause && issue.issue_cause !== '기타' && (
+            <IssueCauseBadge cause={issue.issue_cause} />
+          )}
         </div>
         <div className="text-right text-sm text-gray-500">
           <span className="font-semibold text-gray-900 tabular-nums">{issue.posts_total}건</span>
@@ -92,6 +115,11 @@ function GalleryDetail({ issue, t }: { issue: DailyIssue; t: Record<string, stri
           </span>
         </div>
       </div>
+      {(issue.has_issue || issue.is_borderline) && issue.recent_issue_days !== undefined && issue.recent_issue_days > 0 && (
+        <p className="text-xs text-amber-600 tabular-nums">
+          {tp(t, 'daily_detail.recent_issue_days', { count: issue.recent_issue_days }, '최근 4주 중 {count}일 이슈')}
+        </p>
+      )}
 
       {issue.ai_summary && (
         <p className="text-sm text-gray-600 leading-relaxed">{issue.ai_summary}</p>

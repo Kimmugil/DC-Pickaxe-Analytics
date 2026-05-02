@@ -37,22 +37,25 @@ function parseNum(v: string | undefined, fallback = 0): number {
   return isNaN(n) ? fallback : n
 }
 
-function toDaily(r: Record<string, string>): DailyIssue {
+function toDaily(r: Record<string, string>, recentIssueDays?: number): DailyIssue {
   return {
-    date:             r.date ?? '',
-    run_id:           r.run_id,
-    gallery_id:       r.gallery_id ?? '',
-    gallery_name:     r.gallery_name ?? '',
-    posts_total:      Math.round(parseNum(r.posts_total)),
-    avg_7d:           parseNum(r.avg_7d),
-    avg_same_weekday: parseNum(r.avg_same_weekday),
-    momentum_avg:     parseNum(r.momentum_avg),
-    issue_score:      Math.round(parseNum(r.issue_score)),
-    has_issue:        parseBool(r.has_issue),
-    is_borderline:    parseBool(r.is_borderline),
-    keywords:         parseField(r.keywords) as DailyIssue['keywords'],
-    top_posts:        parseField(r.top_posts) as DailyIssue['top_posts'],
-    ai_summary:       r.ai_summary ?? '',
+    date:              r.date ?? '',
+    run_id:            r.run_id,
+    gallery_id:        r.gallery_id ?? '',
+    gallery_name:      r.gallery_name ?? '',
+    posts_total:       Math.round(parseNum(r.posts_total)),
+    avg_7d:            parseNum(r.avg_7d),
+    avg_same_weekday:  parseNum(r.avg_same_weekday),
+    momentum_avg:      parseNum(r.momentum_avg),
+    issue_score:       Math.round(parseNum(r.issue_score)),
+    has_issue:         parseBool(r.has_issue),
+    is_borderline:     parseBool(r.is_borderline),
+    keywords:          parseField(r.keywords) as DailyIssue['keywords'],
+    top_posts:         parseField(r.top_posts) as DailyIssue['top_posts'],
+    ai_summary:        r.ai_summary ?? '',
+    temperature_tag:   r.temperature_tag || undefined,
+    issue_cause:       r.issue_cause || undefined,
+    recent_issue_days: recentIssueDays,
   }
 }
 
@@ -112,7 +115,24 @@ export async function getDailyIssueDates(): Promise<string[]> {
 
 export async function getDailyByDate(date: string): Promise<DailyIssue[]> {
   const rows = await getDailyIssuesRaw()
-  return rows.filter(r => r.date === date).map(toDaily)
+
+  // Count recent issue days per gallery in the 28 days before target date
+  const cutoff = new Date(date + 'T00:00:00Z')
+  cutoff.setUTCDate(cutoff.getUTCDate() - 28)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+
+  const recentMap = new Map<string, Set<string>>()
+  for (const r of rows) {
+    if (!r.gallery_id || !r.date) continue
+    if (r.date >= date || r.date < cutoffStr) continue
+    if (!parseBool(r.has_issue)) continue
+    if (!recentMap.has(r.gallery_id)) recentMap.set(r.gallery_id, new Set())
+    recentMap.get(r.gallery_id)!.add(r.date)
+  }
+
+  return rows
+    .filter(r => r.date === date)
+    .map(r => toDaily(r, recentMap.get(r.gallery_id)?.size ?? 0))
 }
 
 export async function getWeeklyList(): Promise<string[]> {

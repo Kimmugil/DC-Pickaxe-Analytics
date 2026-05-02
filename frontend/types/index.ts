@@ -23,6 +23,9 @@ export interface DailyIssue {
   keywords: [string, number][] | null
   top_posts: TopPost[] | null
   ai_summary: string
+  temperature_tag?: string
+  issue_cause?: string
+  recent_issue_days?: number
 }
 
 export interface WeeklyGallery {
