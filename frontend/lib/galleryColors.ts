@@ -1,16 +1,16 @@
-const PALETTE = [
-  { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-400' },
-  { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-200',   dot: 'bg-teal-400' },
-  { bg: 'bg-rose-100',   text: 'text-rose-700',   border: 'border-rose-200',   dot: 'bg-rose-400' },
-  { bg: 'bg-amber-100',  text: 'text-amber-700',  border: 'border-amber-200',  dot: 'bg-amber-400' },
-  { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-400' },
-  { bg: 'bg-cyan-100',   text: 'text-cyan-700',   border: 'border-cyan-200',   dot: 'bg-cyan-400' },
-  { bg: 'bg-lime-100',   text: 'text-lime-700',   border: 'border-lime-200',   dot: 'bg-lime-400' },
-  { bg: 'bg-pink-100',   text: 'text-pink-700',   border: 'border-pink-200',   dot: 'bg-pink-400' },
-  { bg: 'bg-sky-100',    text: 'text-sky-700',    border: 'border-sky-200',    dot: 'bg-sky-400' },
-  { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-400' },
-  { bg: 'bg-emerald-100',text: 'text-emerald-700',border: 'border-emerald-200',dot: 'bg-emerald-400' },
-  { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-400' },
+const PALETTE: { bg: string; text: string }[] = [
+  { bg: '#ede9fe', text: '#6d28d9' }, // violet
+  { bg: '#ccfbf1', text: '#0f766e' }, // teal
+  { bg: '#fce7f3', text: '#9d174d' }, // pink
+  { bg: '#fef3c7', text: '#92400e' }, // amber
+  { bg: '#e0e7ff', text: '#3730a3' }, // indigo
+  { bg: '#cffafe', text: '#0e7490' }, // cyan
+  { bg: '#ecfccb', text: '#3f6212' }, // lime
+  { bg: '#ffe4e6', text: '#be123c' }, // rose
+  { bg: '#e0f2fe', text: '#0369a1' }, // sky
+  { bg: '#ffedd5', text: '#9a3412' }, // orange
+  { bg: '#d1fae5', text: '#065f46' }, // emerald
+  { bg: '#f3e8ff', text: '#6b21a8' }, // purple
 ]
 
 function hashId(id: string): number {
@@ -19,7 +19,7 @@ function hashId(id: string): number {
   return h
 }
 
-export type GalleryColor = (typeof PALETTE)[number]
+export type GalleryColor = { bg: string; text: string }
 
 export function galleryColor(galleryId: string): GalleryColor {
   return PALETTE[hashId(galleryId) % PALETTE.length]

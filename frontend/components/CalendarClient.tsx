@@ -38,10 +38,10 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
     else setViewMonth(m => m + 1)
   }
 
-  const firstDOW = new Date(Date.UTC(viewYear, viewMonth - 1, 1)).getUTCDay()
+  const firstDOW   = new Date(Date.UTC(viewYear, viewMonth - 1, 1)).getUTCDay()
   const daysInMonth = new Date(Date.UTC(viewYear, viewMonth, 0)).getUTCDate()
-  const totalCells = Math.ceil((firstDOW + daysInMonth) / 7) * 7
-  const calStart = new Date(Date.UTC(viewYear, viewMonth - 1, 1 - firstDOW))
+  const totalCells  = Math.ceil((firstDOW + daysInMonth) / 7) * 7
+  const calStart    = new Date(Date.UTC(viewYear, viewMonth - 1, 1 - firstDOW))
 
   const cells = Array.from({ length: totalCells }, (_, i) => {
     const d = new Date(calStart)
@@ -57,14 +57,14 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={prevMonth}
-          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors leading-none"
+          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg leading-none"
           aria-label="이전 달"
         >‹</button>
         <h3 className="text-sm font-semibold text-gray-700">{viewYear}년 {viewMonth}월</h3>
         <button
           onClick={nextMonth}
           disabled={isCurrentMonth}
-          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors leading-none disabled:opacity-25 disabled:cursor-not-allowed"
+          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg leading-none disabled:opacity-25 disabled:cursor-not-allowed"
           aria-label="다음 달"
         >›</button>
       </div>
@@ -72,10 +72,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
       {/* Day headers */}
       <div className="grid grid-cols-7 mb-1 border-b border-gray-100 pb-1">
         {['일','월','화','수','목','금','토'].map((label, i) => (
-          <div
-            key={label}
-            className={`text-center text-[11px] font-medium py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}
-          >
+          <div key={label} className={`text-center text-[11px] font-medium py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>
             {label}
           </div>
         ))}
@@ -86,29 +83,43 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
         <div key={wi} className="grid grid-cols-7 gap-px mb-px">
           {week.map((dateStr, di) => {
             const [cy, cm, cd] = dateStr.split('-').map(Number)
-            const inMonth   = cm === viewMonth && cy === viewYear
-            const isToday   = dateStr === todayStr
-            const isFuture  = dateStr > todayStr
+            const inMonth  = cm === viewMonth && cy === viewYear
+            const isToday  = dateStr === todayStr
+            const isFuture = dateStr > todayStr
             const isSun = di === 0, isSat = di === 6
             const galleries = inMonth && !isFuture ? (issuesByDate[dateStr] ?? []) : []
             const hasIssue  = galleries.length > 0
             const hasWeekly = inMonth && !isFuture && weeklySet.has(dateStr)
 
             const cell = (
-              <div className={`min-h-[64px] p-1 rounded ${
-                isToday ? 'bg-blue-50 ring-1 ring-blue-200' :
-                hasIssue ? 'hover:bg-gray-50' : ''
-              } transition-colors`}>
-                <div className={`text-[11px] font-semibold mb-0.5 ${
-                  !inMonth  ? 'text-gray-200' :
-                  isToday   ? 'text-blue-600' :
-                  isFuture  ? 'text-gray-300' :
-                  isSun ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-600'
-                }`}>
-                  {cd}
-                  {isToday && <span className="ml-1 text-[9px] font-normal text-blue-400">오늘</span>}
+              <div
+                className={`min-h-[68px] p-1 rounded transition-colors ${
+                  isToday ? 'bg-blue-50 ring-1 ring-blue-200' :
+                  (hasIssue || hasWeekly) ? 'hover:bg-gray-50 cursor-pointer' : ''
+                }`}
+              >
+                {/* Date number */}
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className={`text-[11px] font-semibold ${
+                    !inMonth  ? 'text-gray-200' :
+                    isToday   ? 'text-blue-600' :
+                    isFuture  ? 'text-gray-300' :
+                    isSun ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-700'
+                  }`}>
+                    {cd}
+                    {isToday && <span className="ml-1 text-[9px] font-normal text-blue-400">오늘</span>}
+                  </span>
+                  {/* Weekly dot — always shown if this date is a week_start */}
+                  {hasWeekly && (
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: '#93c5fd' }}
+                      title="주간 리포트"
+                    />
+                  )}
                 </div>
 
+                {/* Gallery issue badges */}
                 {hasIssue && (
                   <div className="flex flex-col gap-px">
                     {galleries.slice(0, 3).map(g => {
@@ -118,12 +129,19 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                           key={g.id}
                           href={`/gallery/${g.id}`}
                           onClick={e => e.stopPropagation()}
-                          className={`flex items-center gap-0.5 ${c.bg} rounded-sm px-0.5 py-px`}
+                          className="flex items-center gap-0.5 rounded-sm px-0.5 py-px"
+                          style={{ backgroundColor: c.bg }}
                         >
-                          <span className={`text-[9px] leading-tight truncate flex-1 ${c.text} font-medium`}>
+                          <span
+                            className="text-[9px] leading-tight truncate flex-1 font-semibold"
+                            style={{ color: c.text }}
+                          >
                             {g.name}
                           </span>
-                          <span className="text-[9px] tabular-nums shrink-0 text-gray-500 font-medium">
+                          <span
+                            className="text-[9px] tabular-nums shrink-0 font-bold"
+                            style={{ color: g.score >= 7 ? '#dc2626' : '#ea580c' }}
+                          >
                             {g.score}
                           </span>
                         </Link>
@@ -134,12 +152,6 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                         +{galleries.length - 3}
                       </span>
                     )}
-                  </div>
-                )}
-
-                {!hasIssue && hasWeekly && (
-                  <div className="flex justify-center mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-300 inline-block" />
                   </div>
                 )}
               </div>
@@ -156,10 +168,12 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
 
       <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm bg-violet-200 inline-block"/>이슈 (갤러리 색상)
+          <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ede9fe' }} />
+          이슈 (갤러리별 색상)
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-300 inline-block"/>주간 리포트
+          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#93c5fd' }} />
+          주간 리포트
         </span>
       </div>
     </div>

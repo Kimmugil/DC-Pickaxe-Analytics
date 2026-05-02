@@ -10,10 +10,10 @@ function fmtDate(d: string) {
   return `${y}년 ${m}월 ${day}일`
 }
 
-const CAUSE_STYLE: Record<string, string> = {
-  컨텐츠: 'text-blue-600 bg-blue-50',
-  운영:   'text-orange-600 bg-orange-50',
-  화제:   'text-purple-600 bg-purple-50',
+const CAUSE_STYLE: Record<string, { bg: string; text: string }> = {
+  컨텐츠: { bg: '#eff6ff', text: '#1d4ed8' },
+  운영:   { bg: '#fff7ed', text: '#c2410c' },
+  화제:   { bg: '#faf5ff', text: '#7e22ce' },
 }
 
 function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> }) {
@@ -25,13 +25,12 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-      {/* 날짜 + 갤러리명 + 점수 */}
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <Link href={`/gallery/${issue.gallery_id}`} className="text-sm font-semibold text-gray-900 hover:underline">
             {issue.gallery_name}
           </Link>
-          <span className={`text-xs font-semibold tabular-nums ${isHigh ? 'text-red-600' : issue.has_issue ? 'text-orange-500' : 'text-amber-500'}`}>
+          <span className={`text-xs font-bold tabular-nums ${isHigh ? 'text-red-600' : issue.has_issue ? 'text-orange-500' : 'text-amber-500'}`}>
             {issue.issue_score}점
           </span>
           {!issue.has_issue && issue.is_borderline && (
@@ -40,11 +39,14 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
           {issue.temperature_tag && (
             <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{issue.temperature_tag}</span>
           )}
-          {issue.issue_cause && issue.issue_cause !== '기타' && (
-            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${CAUSE_STYLE[issue.issue_cause] ?? 'text-gray-500 bg-gray-100'}`}>
-              {issue.issue_cause}
-            </span>
-          )}
+          {issue.issue_cause && issue.issue_cause !== '기타' && (() => {
+            const s = CAUSE_STYLE[issue.issue_cause!] ?? { bg: '#f9fafb', text: '#6b7280' }
+            return (
+              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }}>
+                {issue.issue_cause}
+              </span>
+            )
+          })()}
         </div>
         <div className="text-right text-xs text-gray-500 shrink-0">
           <span className="font-semibold text-gray-700 tabular-nums">{issue.posts_total}건</span>
@@ -58,11 +60,6 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
           </span>
         </div>
       </div>
-
-      {/* 날짜 (secondary) */}
-      <Link href={`/daily/${issue.date}`} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-        {fmtDate(issue.date)} →
-      </Link>
 
       {issue.ai_summary && (
         <p className="text-sm text-gray-600 leading-relaxed">{issue.ai_summary}</p>
@@ -102,23 +99,45 @@ export default async function DailyListPage() {
     getIssueFeed(80).catch(() => [] as DailyIssue[]),
   ])
 
+  // 날짜별 그룹
+  const byDate = new Map<string, DailyIssue[]>()
+  for (const issue of feed) {
+    if (!byDate.has(issue.date)) byDate.set(issue.date, [])
+    byDate.get(issue.date)!.push(issue)
+  }
+  const dateGroups = Array.from(byDate.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav active="daily" />
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {feed.length === 0 ? (
+        {dateGroups.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-20">
             {t['common.no_data'] ?? '데이터 없음'}
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {feed.map(issue => (
-              <IssueCard
-                key={`${issue.date}-${issue.gallery_id}`}
-                issue={issue}
-                t={t}
-              />
+          <div className="space-y-6">
+            {dateGroups.map(([date, issues]) => (
+              <section key={date}>
+                {/* 날짜 구분선 */}
+                <div className="flex items-center gap-3 mb-3">
+                  <Link href={`/daily/${date}`} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap">
+                    {fmtDate(date)}
+                  </Link>
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400 tabular-nums shrink-0">
+                    {tp(t, 'common.issue_count', { count: issues.filter(i => i.has_issue).length }, '이슈 {count}개')}
+                  </span>
+                </div>
+
+                {/* 갤러리 카드 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {issues.map(issue => (
+                    <IssueCard key={`${issue.date}-${issue.gallery_id}`} issue={issue} t={t} />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

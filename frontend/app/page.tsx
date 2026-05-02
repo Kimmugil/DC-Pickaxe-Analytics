@@ -2,7 +2,6 @@ import Link from 'next/link'
 import type { WeeklyGallery } from '@/types'
 import {
   getCalendarData,
-  getGalleryList,
   getLatestWeeklyOverall,
 } from '@/lib/data'
 import { getTexts, tp } from '@/lib/texts'
@@ -14,54 +13,6 @@ function fmtShort(d: string) {
   if (!d) return ''
   const [, m, day] = d.split('-').map(Number)
   return `${m}월 ${day}일`
-}
-
-// ── 갤러리 대시보드 ───────────────────────────────────────────────────────
-
-function GalleryDashboard({
-  list,
-  t,
-}: {
-  list: Awaited<ReturnType<typeof getGalleryList>>
-  t: Record<string, string>
-}) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-xs font-medium text-gray-400">
-          {tp(t, 'home.dashboard.title', { count: list.length }, '추적 중인 갤러리 {count}개')}
-        </h2>
-        <Link href="/gallery" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-          {t['common.view_all'] ?? '전체 보기 →'}
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
-        {list.map(g => (
-          <Link
-            key={g.id}
-            href={`/gallery/${g.id}`}
-            className="flex items-center justify-between py-1 hover:bg-gray-50 -mx-1 px-1 rounded transition-colors"
-          >
-            <span className="text-sm text-gray-800 truncate">{g.name}</span>
-            <div className="flex items-center gap-2 shrink-0 ml-2">
-              {g.recent_issue_days > 0 ? (
-                <span className="text-xs text-amber-600 tabular-nums">
-                  이슈빈도 {g.recent_issue_days}일/4주
-                </span>
-              ) : (
-                <span className="text-xs text-gray-300">—</span>
-              )}
-              {g.latest_issue && (
-                <span className={`text-xs font-medium tabular-nums ${g.latest_issue.score >= 7 ? 'text-red-500' : 'text-orange-500'}`}>
-                  최근 {g.latest_issue.score}점
-                </span>
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 // ── 최근 주간 요약 ───────────────────────────────────────────────────────
@@ -150,10 +101,9 @@ function WeeklyMiniCard({ g, t }: { g: WeeklyGallery; t: Record<string, string> 
 // ── 홈 페이지 ─────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const [t, cal, galleryList, weeklySummary] = await Promise.all([
+  const [t, cal, weeklySummary] = await Promise.all([
     getTexts(),
     getCalendarData().catch(() => ({ issuesByDate: {} as Record<string, { id: string; name: string; score: number }[]>, weeklyDates: [] as string[] })),
-    getGalleryList().catch(() => []),
     getLatestWeeklyOverall().catch(() => null),
   ])
 
@@ -163,12 +113,7 @@ export default async function HomePage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
 
-        {/* ① 갤러리 대시보드 */}
-        <section>
-          <GalleryDashboard list={galleryList} t={t} />
-        </section>
-
-        {/* ② 이슈 캘린더 */}
+        {/* ① 이슈 캘린더 */}
         <section className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-xs font-medium text-gray-400">
@@ -181,7 +126,7 @@ export default async function HomePage() {
           <CalendarClient issuesByDate={cal.issuesByDate} weeklyDates={cal.weeklyDates} />
         </section>
 
-        {/* ③ 최근 주간 리포트 요약 */}
+        {/* ② 최근 주간 리포트 요약 */}
         <WeeklySummarySection data={weeklySummary} t={t} />
 
       </main>

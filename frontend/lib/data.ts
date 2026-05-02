@@ -7,7 +7,7 @@ import type { DailyIssue, WeeklyGallery, WeeklyData } from '@/types'
 import { getDailyIssuesRaw, getWeeklyGalleriesRaw, getWeeklyOverallRaw } from './sheets'
 
 export type TimelineItem =
-  | { kind: 'issue';  date: string; issue_count: number; max_score: number; galleries: { id: string; name: string; score: number }[] }
+  | { kind: 'issue';  date: string; issue_count: number; max_score: number; galleries: { id: string; name: string; score: number }[]; issues: DailyIssue[] }
   | { kind: 'weekly'; date: string; week_start: string; week_end: string; ai_summary: string; gallery_count: number }
 
 // ── 파싱 헬퍼 ──────────────────────────────────────────────────────────
@@ -458,6 +458,7 @@ export async function getAllTimeline(limit = 120): Promise<TimelineItem[]> {
         name:  r.gallery_name ?? '',
         score: Math.round(parseNum(r.issue_score)),
       })),
+      issues: sorted.map(r => toDaily(r)),
     }
   })
 
