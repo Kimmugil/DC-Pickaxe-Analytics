@@ -13,18 +13,51 @@ function fmtDate(d: string) {
 const CAUSE_STYLE: Record<string, { bg: string; text: string }> = {
   컨텐츠: { bg: '#eff6ff', text: '#1d4ed8' },
   운영:   { bg: '#fff7ed', text: '#c2410c' },
-  화제:   { bg: '#faf5ff', text: '#7e22ce' },
+  밸런스: { bg: '#fef9c3', text: '#854d0e' },
+  버그:   { bg: '#fee2e2', text: '#991b1b' },
+  결제:   { bg: '#fdf4ff', text: '#7e22ce' },
+  화제:   { bg: '#f0fdf4', text: '#166534' },
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  balance: '밸런스', operation: '운영', bug: '버그', payment: '결제', content: '컨텐츠',
+}
+const CAUSE_LABEL: Record<string, string> = { ...CATEGORY_LABEL }
+
+function CategoryBar({ scores }: { scores: DailyIssue['category_scores'] }) {
+  if (!scores) return null
+  const entries = Object.entries(scores) as [string, { score: number; summary: string }][]
+  const hasAny = entries.some(([, v]) => v.score > 0)
+  if (!hasAny) return null
+  return (
+    <div className="space-y-1">
+      {entries.filter(([, v]) => v.score > 0).map(([k, v]) => (
+        <div key={k} className="flex items-center gap-2 text-xs">
+          <span className="text-gray-400 w-10 shrink-0">{CATEGORY_LABEL[k] ?? k}</span>
+          <div className="flex gap-0.5">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-3 h-2 rounded-sm"
+                style={{ backgroundColor: i <= v.score ? '#f97316' : '#e5e7eb' }} />
+            ))}
+          </div>
+          {v.summary && <span className="text-gray-500 line-clamp-1 flex-1">{v.summary}</span>}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> }) {
   const kws  = Array.isArray(issue.keywords)  ? issue.keywords  : []
   const tops = Array.isArray(issue.top_posts) ? issue.top_posts : []
+  const majors = Array.isArray(issue.major_issues) ? issue.major_issues : []
   const isHigh = issue.issue_score >= 7
   const base = Math.max(issue.avg_same_weekday ?? 0, issue.avg_7d)
   const pct  = base > 0 ? ((issue.posts_total - base) / base) * 100 : 0
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      {/* 헤더 */}
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <Link href={`/gallery/${issue.gallery_id}`} className="text-sm font-semibold text-gray-900 hover:underline">
@@ -40,10 +73,11 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
             <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{issue.temperature_tag}</span>
           )}
           {issue.issue_cause && issue.issue_cause !== '기타' && (() => {
-            const s = CAUSE_STYLE[issue.issue_cause!] ?? { bg: '#f9fafb', text: '#6b7280' }
+            const label = CAUSE_LABEL[issue.issue_cause!] ?? issue.issue_cause!
+            const s = CAUSE_STYLE[label] ?? { bg: '#f9fafb', text: '#6b7280' }
             return (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: s.bg, color: s.text }}>
-                {issue.issue_cause}
+                {label}
               </span>
             )
           })()}
@@ -61,10 +95,53 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
         </div>
       </div>
 
+      {/* 헤드라인 */}
+      {issue.headline && (
+        <p className="text-sm font-semibold text-gray-800">{issue.headline}</p>
+      )}
+
+      {/* AI 요약 */}
       {issue.ai_summary && (
         <p className="text-sm text-gray-600 leading-relaxed">{issue.ai_summary}</p>
       )}
 
+      {/* 카테고리 점수 */}
+      <CategoryBar scores={issue.category_scores} />
+
+      {/* 주요 이슈 */}
+      {majors.length > 0 && (
+        <div className="space-y-2 pt-2 border-t border-gray-100">
+          {majors.slice(0, 3).map((m, i) => (
+            <div key={i} className="text-xs space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-700">{m.title}</span>
+                {m.mention_count > 0 && (
+                  <span className="text-gray-400 tabular-nums">언급 {m.mention_count}건</span>
+                )}
+                {m.ref_url && (
+                  <a href={m.ref_url} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline">↗</a>
+                )}
+              </div>
+              {m.detail && <p className="text-gray-500 leading-relaxed">{m.detail}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 감정 분위기 */}
+      {(issue.sentiment?.positive || issue.sentiment?.negative) && (
+        <div className="flex flex-col gap-1 pt-1 border-t border-gray-100 text-xs">
+          {issue.sentiment.positive && (
+            <p className="text-green-700"><span className="font-medium">긍정</span> {issue.sentiment.positive}</p>
+          )}
+          {issue.sentiment.negative && (
+            <p className="text-red-600"><span className="font-medium">부정</span> {issue.sentiment.negative}</p>
+          )}
+        </div>
+      )}
+
+      {/* 키워드 */}
       {kws.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {kws.slice(0, 6).map(([kw, cnt]) => (
@@ -75,7 +152,8 @@ function IssueCard({ issue, t }: { issue: DailyIssue; t: Record<string, string> 
         </div>
       )}
 
-      {tops.length > 0 && (
+      {/* 상위 게시글 (major_issues가 없을 때만 표시) */}
+      {majors.length === 0 && tops.length > 0 && (
         <div className="space-y-1 pt-2 border-t border-gray-100">
           {tops.slice(0, 3).map((p, i) => (
             <div key={i} className="flex items-start gap-2 text-xs">

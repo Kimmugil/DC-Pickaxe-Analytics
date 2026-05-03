@@ -57,8 +57,14 @@ function toDaily(r: Record<string, string>, recentIssueDays?: number): DailyIssu
     keywords:          parseField(r.keywords) as DailyIssue['keywords'],
     top_posts:         parseField(r.top_posts) as DailyIssue['top_posts'],
     ai_summary:        r.ai_summary ?? '',
+    headline:          r.headline || undefined,
     temperature_tag:   r.temperature_tag || undefined,
     issue_cause:       r.issue_cause || undefined,
+    category_scores:   parseField(r.category_scores) as DailyIssue['category_scores'] ?? undefined,
+    major_issues:      parseField(r.major_issues) as DailyIssue['major_issues'] ?? undefined,
+    sentiment:         r.sentiment_positive || r.sentiment_negative
+      ? { positive: r.sentiment_positive ?? '', negative: r.sentiment_negative ?? '' }
+      : undefined,
     recent_issue_days: recentIssueDays,
   }
 }

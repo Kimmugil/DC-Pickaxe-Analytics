@@ -36,6 +36,52 @@ def _engagement(post: dict) -> float:
     return comments * 3 + likes * 2 + views * 0.05
 
 
+def _ai_sample_size(total: int) -> int:
+    """
+    일일 게시량에 따른 AI 분석 샘플 수 결정.
+
+    기준선: 전체의 절반(total // 2), 최소 10개, 최대 50개.
+    실제 게시량을 초과할 수 없음 (소규모 갤러리 전체 사용).
+
+    예시:
+        5개  → 5개  (전체)
+        10개 → 10개 (전체)
+        20개 → 10개 (50 %)
+        30개 → 15개 (50 %)
+        50개 → 25개 (50 %)
+        80개 → 40개 (50 %)
+       100개 → 50개 (상한 도달)
+       700개 → 50개 (상한)
+    """
+    if total <= 0:
+        return 0
+    half = max(10, total // 2)
+    return min(half, 50, total)
+
+
+BODY_TRUNCATE = 300   # AI 입력용 본문 최대 글자 수
+
+
+def _sample_for_ai(posts: list[dict]) -> list[dict]:
+    """
+    AI 분석용 게시글 샘플링.
+    참여도(댓글 × 3 + 추천 × 2 + 조회 × 0.05) 상위 N개를 추출하고,
+    본문을 BODY_TRUNCATE자로 잘라 반환.
+    """
+    n = _ai_sample_size(len(posts))
+    sorted_posts = sorted(posts, key=_engagement, reverse=True)
+    result = []
+    for p in sorted_posts[:n]:
+        result.append({
+            "제목":   str(p.get("제목", "")),
+            "본문":   str(p.get("본문", ""))[:BODY_TRUNCATE],
+            "댓글수": int(p.get("댓글수", 0) or 0),
+            "추천수": int(p.get("추천수", 0) or 0),
+            "링크":   str(p.get("링크", "")),
+        })
+    return result
+
+
 def _issue_posts(posts: list[dict], n: int = 5) -> list[dict]:
     """댓글 수 기준 정렬 — 가장 많이 논의된 = 이슈를 일으킨 게시글."""
     scored = sorted(posts, key=lambda p: int(p.get("댓글수", 0) or 0), reverse=True)
@@ -171,8 +217,9 @@ def _analyze_gallery(
     has_issue     = issue_score >= ISSUE_THRESHOLD
     is_borderline = (not has_issue) and (issue_score >= BORDERLINE_THRESHOLD)
 
-    keywords = kw_mod.extract(posts_today, top_n=10)
-    top5     = _issue_posts(posts_today, n=5)
+    keywords   = kw_mod.extract(posts_today, top_n=10)
+    top5       = _issue_posts(posts_today, n=5)
+    ai_samples = _sample_for_ai(posts_today)
 
     if verbose:
         flag = "이슈" if has_issue else ("경계" if is_borderline else "정상")
@@ -197,9 +244,14 @@ def _analyze_gallery(
         "is_borderline":    is_borderline,
         "keywords":         keywords,
         "top_posts":        top5,
+        "ai_samples":       ai_samples,   # AI 분석용 본문 포함 샘플
         "ai_summary":       "",
+        "headline":         "",
         "temperature_tag":  "",
         "issue_cause":      "",
+        "category_scores":  {},
+        "major_issues":     [],
+        "sentiment":        {"positive": "", "negative": ""},
     }
 
 
@@ -237,9 +289,14 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                 "is_borderline":    False,
                 "keywords":         [],
                 "top_posts":        [],
+                "ai_samples":       [],
                 "ai_summary":       "",
+                "headline":         "",
                 "temperature_tag":  "",
                 "issue_cause":      "",
+                "category_scores":  {},
+                "major_issues":     [],
+                "sentiment":        {"positive": "", "negative": ""},
             })
 
     # 이슈 갤러리 AI 요약
@@ -252,13 +309,18 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                     gallery_name=r["gallery_name"],
                     top_posts=r["top_posts"],
                     keywords=r["keywords"],
+                    ai_samples=r["ai_samples"],
                     issue_score=r["issue_score"],
                     count_today=r["posts_total"],
                     avg_7d=r["avg_7d"],
                 )
+                r["headline"]        = ai.get("headline", "")
                 r["ai_summary"]      = ai.get("summary", "")
                 r["temperature_tag"] = ai.get("temperature_tag", "")
                 r["issue_cause"]     = ai.get("issue_cause", "기타")
+                r["category_scores"] = ai.get("category_scores", {})
+                r["major_issues"]    = ai.get("major_issues", [])
+                r["sentiment"]       = ai.get("sentiment", {"positive": "", "negative": ""})
                 if verbose:
                     print(f"  완료: {r['gallery_name']} [{r['temperature_tag']}]", flush=True)
             except Exception as e:
@@ -278,6 +340,7 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                     gallery_name=r["gallery_name"],
                     top_posts=r["top_posts"],
                     keywords=r["keywords"],
+                    ai_samples=r["ai_samples"],
                     issue_score=r["issue_score"],
                     count_today=r["posts_total"],
                     avg_baseline=avg_baseline,

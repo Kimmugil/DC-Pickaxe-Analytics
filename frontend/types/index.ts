@@ -8,6 +8,18 @@ export interface TopPost {
   score?: number
 }
 
+export interface CategoryScore {
+  score: number      // 0~3
+  summary: string
+}
+
+export interface MajorIssue {
+  title: string
+  detail: string
+  mention_count: number
+  ref_url: string
+}
+
 export interface DailyIssue {
   date: string
   run_id?: string
@@ -23,8 +35,22 @@ export interface DailyIssue {
   keywords: [string, number][] | null
   top_posts: TopPost[] | null
   ai_summary: string
+  // v2 structured fields
+  headline?: string
   temperature_tag?: string
   issue_cause?: string
+  category_scores?: {
+    balance:   CategoryScore
+    operation: CategoryScore
+    bug:       CategoryScore
+    payment:   CategoryScore
+    content:   CategoryScore
+  }
+  major_issues?: MajorIssue[]
+  sentiment?: {
+    positive: string
+    negative: string
+  }
   recent_issue_days?: number
 }
 

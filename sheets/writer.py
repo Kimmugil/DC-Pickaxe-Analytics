@@ -24,6 +24,9 @@ _HEADERS = {
         "posts_total", "avg_7d", "issue_score", "has_issue",
         "keywords", "top_posts", "ai_summary",
         "temperature_tag", "issue_cause",
+        # v2: 구조화 분석 필드
+        "headline", "category_scores", "major_issues",
+        "sentiment_positive", "sentiment_negative",
     ],
     "weekly_galleries": [
         "week_start", "week_end", "run_id", "gallery_id", "gallery_name",
@@ -123,11 +126,87 @@ def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
             r.get("ai_summary", ""),
             r.get("temperature_tag", ""),
             r.get("issue_cause", ""),
+            # v2: 구조화 분석 필드
+            r.get("headline", ""),
+            json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+            json.dumps(r.get("major_issues", []), ensure_ascii=False),
+            r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
+            r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
         ]
         for r in results
     ]
     if rows:
         ws.append_rows(rows, value_input_option="RAW")
+
+
+# ── 일간 이슈 재분석 upsert ───────────────────────────────────────────
+
+def upsert_daily_issues(results: list[dict], date: str, run_id: str) -> None:
+    """
+    daily_issues 시트에 재분석 결과를 upsert합니다.
+    (date, gallery_id) 기준으로 기존 행이 있으면 덮어쓰고, 없으면 추가합니다.
+    백필 재분석 전용.
+    """
+    ws = _spreadsheet().worksheet("daily_issues")
+    _ensure_headers(ws, _HEADERS["daily_issues"])
+
+    all_values = ws.get_all_values()
+    headers = all_values[0] if all_values else []
+    col = {h: i for i, h in enumerate(headers)}
+
+    # (date, gallery_id) → 1-indexed 행 번호 맵핑
+    row_map: dict[tuple[str, str], int] = {}
+    for row_idx, row in enumerate(all_values[1:], start=2):
+        d   = row[col["date"]]      if "date"       in col and col["date"]       < len(row) else ""
+        gid = row[col["gallery_id"]] if "gallery_id" in col and col["gallery_id"] < len(row) else ""
+        if d and gid:
+            row_map[(d, gid)] = row_idx
+
+    new_rows: list[dict] = []
+    update_batch: list[tuple[int, list]] = []
+
+    for r in results:
+        row_data = _build_daily_row(r, date, run_id, len(headers))
+        key = (date, r.get("gallery_id", ""))
+        if key in row_map:
+            update_batch.append((row_map[key], row_data))
+        else:
+            new_rows.append(r)
+
+    # 기존 행 업데이트 (행 단위 batch)
+    for row_idx, row_data in update_batch:
+        ws.update(f"A{row_idx}", [row_data])
+
+    # 신규 행 append
+    if new_rows:
+        append_rows = [_build_daily_row(r, date, run_id, len(headers)) for r in new_rows]
+        ws.append_rows(append_rows, value_input_option="RAW")
+
+    print(f"  upsert: {len(update_batch)}행 업데이트 / {len(new_rows)}행 신규 추가", flush=True)
+
+
+def _build_daily_row(r: dict, date: str, run_id: str, total_cols: int) -> list:
+    """daily_issues 헤더 순서에 맞는 행 데이터를 반환합니다."""
+    base = [
+        date, run_id,
+        r.get("gallery_id", ""), r.get("gallery_name", ""),
+        r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
+        r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
+        json.dumps(r.get("keywords", []), ensure_ascii=False),
+        json.dumps(r.get("top_posts", []), ensure_ascii=False),
+        r.get("ai_summary", ""),
+        r.get("temperature_tag", ""),
+        r.get("issue_cause", ""),
+        r.get("headline", ""),
+        json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+        json.dumps(r.get("major_issues", []), ensure_ascii=False),
+        r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
+        r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
+    ]
+    # 혹시 헤더보다 짧으면 빈 문자열로 패딩
+    while len(base) < total_cols:
+        base.append("")
+    return base
 
 
 # ── 주간 갤러리별 적재 ────────────────────────────────────────────────

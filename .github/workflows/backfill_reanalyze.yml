@@ -1,0 +1,54 @@
+name: Backfill — Full Reanalyze (v2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: '시작 날짜 (YYYY-MM-DD)'
+        required: true
+        default: '2025-04-01'
+      end_date:
+        description: '종료 날짜 (YYYY-MM-DD)'
+        required: true
+        default: '2025-04-30'
+      gallery_id:
+        description: '특정 갤러리만 처리 (비워두면 전체)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'dry-run (실제 쓰기 없이 대상 목록만 출력)'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run reanalyze backfill
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          ARGS="--start ${{ github.event.inputs.start_date }} --end ${{ github.event.inputs.end_date }}"
+          if [ -n "${{ github.event.inputs.gallery_id }}" ]; then
+            ARGS="$ARGS --gallery ${{ github.event.inputs.gallery_id }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python backfill_reanalyze.py $ARGS
