@@ -26,12 +26,12 @@ function fmtDate(d: string) {
 function matchesCategory(issue: DailyIssue, catKey: string): boolean {
   if (catKey === 'all') return true
   const cs = issue.category_scores
-  if (cs) {
+  // {} (빈 객체) 는 구버전 데이터로 취급 — Object.keys 로 실제 데이터 유무 구분
+  if (cs && Object.keys(cs).length > 0) {
     const entry = cs[catKey as keyof typeof cs]
     if (entry && entry.score > 0) return true
   } else {
-    // 구버전 데이터: category_scores 없으면 issue_cause만 비교
-    // cause 없으면 전체 카테고리에 표시 (구버전 데이터 숨기지 않음)
+    // 구버전 데이터: issue_cause 없으면 전체 카테고리에 표시
     if (!issue.issue_cause || issue.issue_cause === '기타') return true
   }
   return normalizeCause(issue.issue_cause) === CATEGORY_LABEL[catKey]

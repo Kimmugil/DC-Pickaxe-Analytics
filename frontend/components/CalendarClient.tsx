@@ -24,17 +24,18 @@ function toDateStr(d: Date) {
   ].join('-')
 }
 
-function CauseDot({ cause }: { cause?: string }) {
+function CauseBadge({ cause }: { cause?: string }) {
   if (!cause) return null
   const label = normalizeCause(cause)
   const style = CAUSE_STYLE[label]
   if (!style || label === '기타') return null
   return (
     <span
-      className="w-1.5 h-1.5 rounded-full shrink-0 inline-block"
-      style={{ backgroundColor: style.text }}
-      title={label}
-    />
+      className="text-[8px] leading-tight px-0.5 rounded shrink-0 font-semibold"
+      style={{ backgroundColor: style.bg, color: style.text }}
+    >
+      {label}
+    </span>
   )
 }
 
@@ -165,7 +166,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                           >
                             {g.score}
                           </span>
-                          <CauseDot cause={g.cause} />
+                          <CauseBadge cause={g.cause} />
                         </Link>
                       )
                     })}
@@ -198,7 +199,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
           주간 리포트
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#c2410c' }} />
+          <span className="text-[8px] px-0.5 rounded font-semibold" style={{ backgroundColor: '#fef9c3', color: '#854d0e' }}>밸런스</span>
           카테고리
         </span>
       </div>

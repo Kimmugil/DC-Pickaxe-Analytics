@@ -70,7 +70,7 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
 function matchesCategory(issue: DailyIssue, catKey: string): boolean {
   if (catKey === 'all') return true
   const cs = issue.category_scores
-  if (cs) {
+  if (cs && Object.keys(cs).length > 0) {
     const entry = cs[catKey as keyof typeof cs]
     if (entry && entry.score > 0) return true
   } else {
