@@ -32,6 +32,13 @@ export default function AdminPage() {
   const [galleryId, setGalleryId] = useState('')
   const [dryRun, setDryRun]       = useState(false)
 
+  // 주간 백필
+  const [weeklyStatus, setWeeklyStatus] = useState<ActionStatus>('idle')
+  const [weeklyMsg, setWeeklyMsg]       = useState('')
+  const [weeklyStart, setWeeklyStart]   = useState('2026-01-05')
+  const [weeklyEnd, setWeeklyEnd]       = useState('2026-04-28')
+  const [weeklyDryRun, setWeeklyDryRun] = useState(false)
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setAuthLoading(true)
@@ -74,6 +81,30 @@ export default function AdminPage() {
     } catch (err: unknown) {
       setTagMsg(String(err))
       setTagStatus('error')
+    }
+  }
+
+  async function handleWeeklyBackfill() {
+    if (!weeklyStart || !weeklyEnd) return
+    setWeeklyStatus('running')
+    setWeeklyMsg('')
+    try {
+      const res = await fetch('/api/admin/trigger-backfill-weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, start_date: weeklyStart, end_date: weeklyEnd, dry_run: weeklyDryRun }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setWeeklyMsg(data.error ?? `오류 (${res.status})`)
+        setWeeklyStatus('error')
+      } else {
+        setWeeklyStatus('done')
+        setWeeklyMsg(`${weeklyDryRun ? '[dry-run] ' : ''}${weeklyStart} ~ ${weeklyEnd} 주간 백필 작업이 GitHub Actions에서 시작됐습니다.`)
+      }
+    } catch (err: unknown) {
+      setWeeklyMsg(String(err))
+      setWeeklyStatus('error')
     }
   }
 
@@ -197,6 +228,55 @@ export default function AdminPage() {
                 {reanalyzeStatus === 'running' ? '실행 중...' : '재분석 백필 실행'}
               </button>
               <StatusMsg status={reanalyzeStatus} msg={reanalyzeMsg} />
+            </div>
+
+            {/* ── 주간 백필 ── */}
+            <div className="bg-white border border-green-100 rounded-lg p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-1">주간 분석 백필 <span className="text-[11px] text-green-600 font-normal ml-1">weekly</span></h2>
+              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                지정 기간의 모든 주(월요일 기준)를 순서대로 분석해 weekly_galleries / weekly_overall 시트에 적재합니다.
+              </p>
+
+              <div className="space-y-2 mb-4">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[11px] text-gray-400 block mb-1">시작 날짜</label>
+                    <input
+                      type="date"
+                      value={weeklyStart}
+                      onChange={e => setWeeklyStart(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[11px] text-gray-400 block mb-1">종료 날짜</label>
+                    <input
+                      type="date"
+                      value={weeklyEnd}
+                      onChange={e => setWeeklyEnd(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={weeklyDryRun}
+                    onChange={e => setWeeklyDryRun(e.target.checked)}
+                    className="rounded"
+                  />
+                  dry-run (실제 쓰기 없이 대상 목록만 출력)
+                </label>
+              </div>
+
+              <button
+                onClick={handleWeeklyBackfill}
+                disabled={weeklyStatus === 'running' || !weeklyStart || !weeklyEnd}
+                className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-sm px-4 py-2 rounded transition-colors"
+              >
+                {weeklyStatus === 'running' ? '실행 중...' : '주간 백필 실행'}
+              </button>
+              <StatusMsg status={weeklyStatus} msg={weeklyMsg} />
             </div>
 
             {/* ── 태그만 채우기 (구버전) ── */}
