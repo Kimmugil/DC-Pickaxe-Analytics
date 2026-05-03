@@ -6,11 +6,11 @@ on:
       start_date:
         description: '시작 날짜 (YYYY-MM-DD)'
         required: true
-        default: '2025-04-01'
+        default: '2026-04-01'
       end_date:
         description: '종료 날짜 (YYYY-MM-DD)'
         required: true
-        default: '2025-04-30'
+        default: '2026-04-30'
       gallery_id:
         description: '특정 갤러리만 처리 (비워두면 전체)'
         required: false

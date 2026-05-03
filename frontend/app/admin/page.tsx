@@ -27,8 +27,8 @@ export default function AdminPage() {
   // 전체 재분석 백필
   const [reanalyzeStatus, setReanalyzeStatus] = useState<ActionStatus>('idle')
   const [reanalyzeMsg, setReanalyzeMsg]       = useState('')
-  const [startDate, setStartDate] = useState('2025-04-01')
-  const [endDate, setEndDate]     = useState('2025-04-30')
+  const [startDate, setStartDate] = useState('2026-04-01')
+  const [endDate, setEndDate]     = useState('2026-04-30')
   const [galleryId, setGalleryId] = useState('')
   const [dryRun, setDryRun]       = useState(false)
 
