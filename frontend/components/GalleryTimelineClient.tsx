@@ -73,6 +73,8 @@ function matchesCategory(issue: DailyIssue, catKey: string): boolean {
   if (cs) {
     const entry = cs[catKey as keyof typeof cs]
     if (entry && entry.score > 0) return true
+  } else {
+    if (!issue.issue_cause || issue.issue_cause === '기타') return true
   }
   return normalizeCause(issue.issue_cause) === CATEGORY_LABEL[catKey]
 }

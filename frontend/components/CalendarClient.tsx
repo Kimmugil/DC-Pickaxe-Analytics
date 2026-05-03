@@ -2,9 +2,17 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { galleryColor } from '@/lib/galleryColors'
+import { normalizeCause, CAUSE_STYLE } from '@/lib/issueCategories'
+
+interface GalleryEntry {
+  id: string
+  name: string
+  score: number
+  cause?: string
+}
 
 interface Props {
-  issuesByDate: Record<string, { id: string; name: string; score: number }[]>
+  issuesByDate: Record<string, GalleryEntry[]>
   weeklyDates: string[]
 }
 
@@ -14,6 +22,20 @@ function toDateStr(d: Date) {
     String(d.getUTCMonth() + 1).padStart(2, '0'),
     String(d.getUTCDate()).padStart(2, '0'),
   ].join('-')
+}
+
+function CauseDot({ cause }: { cause?: string }) {
+  if (!cause) return null
+  const label = normalizeCause(cause)
+  const style = CAUSE_STYLE[label]
+  if (!style || label === '기타') return null
+  return (
+    <span
+      className="w-1.5 h-1.5 rounded-full shrink-0 inline-block"
+      style={{ backgroundColor: style.text }}
+      title={label}
+    />
+  )
 }
 
 export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
@@ -93,7 +115,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
 
             const cell = (
               <div
-                className={`min-h-[68px] p-1 rounded transition-colors ${
+                className={`min-h-[72px] p-1 rounded transition-colors ${
                   isToday ? 'bg-blue-50 ring-1 ring-blue-200' :
                   (hasIssue || hasWeekly) ? 'hover:bg-gray-50 cursor-pointer' : ''
                 }`}
@@ -109,7 +131,6 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                     {cd}
                     {isToday && <span className="ml-1 text-[9px] font-normal text-blue-400">오늘</span>}
                   </span>
-                  {/* Weekly dot — always shown if this date is a week_start */}
                   {hasWeekly && (
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
@@ -119,7 +140,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                   )}
                 </div>
 
-                {/* Gallery issue badges */}
+                {/* Gallery issue badges — each links to the specific card */}
                 {hasIssue && (
                   <div className="flex flex-col gap-px">
                     {galleries.slice(0, 3).map(g => {
@@ -127,7 +148,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                       return (
                         <Link
                           key={g.id}
-                          href={`/gallery/${g.id}`}
+                          href={`/daily/${dateStr}#issue-${g.id}`}
                           onClick={e => e.stopPropagation()}
                           className="flex items-center gap-0.5 rounded-sm px-0.5 py-px"
                           style={{ backgroundColor: c.bg }}
@@ -144,6 +165,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                           >
                             {g.score}
                           </span>
+                          <CauseDot cause={g.cause} />
                         </Link>
                       )
                     })}
@@ -174,6 +196,10 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#93c5fd' }} />
           주간 리포트
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#c2410c' }} />
+          카테고리
         </span>
       </div>
     </div>

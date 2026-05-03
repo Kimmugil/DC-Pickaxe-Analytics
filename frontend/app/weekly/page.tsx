@@ -17,7 +17,7 @@ export default async function WeeklyListPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Nav active="weekly" />
+      <Nav active="reports" />
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {list.length === 0 ? (

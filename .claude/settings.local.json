@@ -23,7 +23,12 @@
       "Bash(python3 -c ':*)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/next build *)",
+      "Read(//c/Users/haluj/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/e26c3535-927a-47ef-85ff-a163d49f1fa1/525edc50-b425-4ab5-a96f-30c73808ba2b/skills/xlsx/**)",
+      "Bash(python -c ' *)"
     ]
   }
 }

@@ -20,10 +20,6 @@ export default function AdminPage() {
   const [authError, setAuthError]     = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
 
-  // 태그 백필
-  const [tagStatus, setTagStatus] = useState<ActionStatus>('idle')
-  const [tagMsg, setTagMsg]       = useState('')
-
   // 전체 재분석 백필
   const [reanalyzeStatus, setReanalyzeStatus] = useState<ActionStatus>('idle')
   const [reanalyzeMsg, setReanalyzeMsg]       = useState('')
@@ -58,29 +54,6 @@ export default function AdminPage() {
       setAuthError(true)
     } finally {
       setAuthLoading(false)
-    }
-  }
-
-  async function handleTagBackfill() {
-    setTagStatus('running')
-    setTagMsg('')
-    try {
-      const res = await fetch('/api/admin/trigger-backfill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setTagMsg(data.error ?? `오류 (${res.status})`)
-        setTagStatus('error')
-      } else {
-        setTagStatus('done')
-        setTagMsg('GitHub Actions에 태그 백필 작업이 시작됐습니다.')
-      }
-    } catch (err: unknown) {
-      setTagMsg(String(err))
-      setTagStatus('error')
     }
   }
 
@@ -277,22 +250,6 @@ export default function AdminPage() {
                 {weeklyStatus === 'running' ? '실행 중...' : '주간 백필 실행'}
               </button>
               <StatusMsg status={weeklyStatus} msg={weeklyMsg} />
-            </div>
-
-            {/* ── 태그만 채우기 (구버전) ── */}
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-1">AI 태그만 채우기 <span className="text-[11px] text-gray-400 font-normal ml-1">구버전</span></h2>
-              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                temperature_tag / issue_cause가 비어있는 행만 골라 태그를 추가합니다. 제목 기반 분석(본문 없음).
-              </p>
-              <button
-                onClick={handleTagBackfill}
-                disabled={tagStatus === 'running'}
-                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white text-sm px-4 py-2 rounded transition-colors"
-              >
-                {tagStatus === 'running' ? '실행 중...' : '태그 백필 실행'}
-              </button>
-              <StatusMsg status={tagStatus} msg={tagMsg} />
             </div>
 
             {/* ── 캐시 초기화 ── */}

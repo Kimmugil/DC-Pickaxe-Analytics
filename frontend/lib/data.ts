@@ -92,7 +92,7 @@ export async function getCalendarData() {
     getWeeklyGalleriesRaw(),
   ])
 
-  const issuesByDate: Record<string, { id: string; name: string; score: number }[]> = {}
+  const issuesByDate: Record<string, { id: string; name: string; score: number; cause?: string }[]> = {}
   for (const r of daily) {
     if (!r.date || !parseBool(r.has_issue)) continue
     if (!issuesByDate[r.date]) issuesByDate[r.date] = []
@@ -100,6 +100,7 @@ export async function getCalendarData() {
       id:    r.gallery_id ?? '',
       name:  r.gallery_name ?? '',
       score: Math.round(parseNum(r.issue_score)),
+      cause: r.issue_cause || undefined,
     })
   }
   for (const arr of Object.values(issuesByDate)) {
@@ -110,6 +111,15 @@ export async function getCalendarData() {
     .sort((a, b) => b.localeCompare(a))
 
   return { issuesByDate, weeklyDates }
+}
+
+export async function getRecentIssues(n = 3): Promise<DailyIssue[]> {
+  const rows = await getDailyIssuesRaw()
+  return rows
+    .filter(r => parseBool(r.has_issue))
+    .map(r => toDaily(r))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.issue_score - a.issue_score)
+    .slice(0, n)
 }
 
 export async function getLatestDailyInfo() {
