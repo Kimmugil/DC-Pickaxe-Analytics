@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getWeeklyListWithInfo, getMonthlyListWithInfo } from '@/lib/data'
 import { getTexts, tp } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
+import { CAUSE_STYLE } from '@/lib/issueCategories'
 
 function fmtShort(d: string) {
   if (!d) return ''
@@ -121,6 +122,24 @@ export default async function ReportsPage() {
                             <p className="text-xs text-gray-300 flex-1">
                               {t['common.no_summary'] ?? '요약 없음'}
                             </p>
+                          )}
+
+                          {item.top_causes && item.top_causes.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.top_causes.map(cause => {
+                                const style = CAUSE_STYLE[cause]
+                                if (!style) return null
+                                return (
+                                  <span
+                                    key={cause}
+                                    className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                    style={{ backgroundColor: style.bg, color: style.text }}
+                                  >
+                                    {cause}
+                                  </span>
+                                )
+                              })}
+                            </div>
                           )}
 
                           <div className="flex items-center justify-between pt-2 border-t border-gray-100">

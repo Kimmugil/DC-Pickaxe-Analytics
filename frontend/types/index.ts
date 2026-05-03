@@ -65,6 +65,22 @@ export interface WeeklyGallery {
   keywords: [string, number][] | null
   top_posts: TopPost[] | null
   ai_summary: string
+  // v2 structured fields
+  headline?: string
+  temperature_tag?: string
+  top_cause?: string
+  category_scores?: {
+    balance:   CategoryScore
+    operation: CategoryScore
+    bug:       CategoryScore
+    payment:   CategoryScore
+    content:   CategoryScore
+  }
+  major_issues?: Omit<MajorIssue, 'ref_url'>[]
+  sentiment?: {
+    positive: string
+    negative: string
+  }
 }
 
 export interface WeeklyData {
@@ -88,6 +104,21 @@ export interface MonthlyGallery {
   keywords: [string, number][] | null
   headlines: string[] | null
   ai_summary: string
+  // v2 structured fields
+  headline?: string
+  temperature_tag?: string
+  category_scores?: {
+    balance:   CategoryScore
+    operation: CategoryScore
+    bug:       CategoryScore
+    payment:   CategoryScore
+    content:   CategoryScore
+  }
+  major_issues?: Omit<MajorIssue, 'ref_url'>[]
+  sentiment?: {
+    positive: string
+    negative: string
+  }
 }
 
 export interface MonthlyOverall {

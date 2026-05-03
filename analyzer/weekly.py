@@ -43,6 +43,20 @@ def _top_posts(posts: list[dict], n: int = 5) -> list[dict]:
     ]
 
 
+def _ai_samples(posts: list[dict], n: int = 15) -> list[dict]:
+    """참여도 상위 게시글을 본문 포함 샘플로 반환 (AI 분석 입력용)."""
+    scored = sorted(posts, key=_engagement, reverse=True)
+    result = []
+    for p in scored[:n]:
+        result.append({
+            "제목":   str(p.get("제목", "")),
+            "본문":   str(p.get("본문", "") or "")[:300],
+            "댓글수": int(p.get("댓글수", 0) or 0),
+            "추천수": int(p.get("추천수", 0) or 0),
+        })
+    return result
+
+
 def _analyze_gallery(
     gallery: dict,
     week_start: str,
@@ -54,7 +68,6 @@ def _analyze_gallery(
     total = len(posts)
 
     # 일별 게시글 수 — 주간 전 날짜(7일) 0으로 초기화 후 실제값 덮어쓰기
-    # (게시글 없는 날도 막대 차트에 0으로 표시되도록)
     from datetime import date as _date
     _ws = datetime.strptime(week_start, "%Y-%m-%d").date()
     _we = datetime.strptime(week_end,   "%Y-%m-%d").date()
@@ -68,8 +81,9 @@ def _analyze_gallery(
             if str(_d) in daily_counts:
                 daily_counts[str(_d)] = int(_c)
 
-    keywords = kw_mod.extract(posts, top_n=10)
-    top5     = _top_posts(posts, n=5)
+    keywords   = kw_mod.extract(posts, top_n=10)
+    top5       = _top_posts(posts, n=5)
+    ai_samples = _ai_samples(posts, n=15)
 
     if verbose:
         tag = " (저활동 — AI 요약 제외)" if total < 10 else ""
@@ -82,7 +96,14 @@ def _analyze_gallery(
         "daily_counts": daily_counts,
         "keywords":     keywords,
         "top_posts":    top5,
+        "_ai_samples":  ai_samples,  # AI 요약에만 사용, 시트에 저장 안 함
         "ai_summary":   "",
+        # v2 fields (AI 요약 후 채워짐)
+        "headline":        "",
+        "category_scores": {},
+        "major_issues":    [],
+        "sentiment":       {},
+        "temperature_tag": "",
     }
 
 
@@ -150,9 +171,9 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
                 "ai_summary":   "",
             })
 
-    # 갤러리별 AI 요약 (10건 미만은 제외)
+    # 갤러리별 AI 요약 v2 (10건 미만은 제외)
     if verbose:
-        print("\n[AI 요약] 갤러리별 주간 요약 생성 중...")
+        print("\n[AI 요약 v2] 갤러리별 주간 요약 생성 중...")
     for r in results:
         if r["total_posts"] < 10:
             r["ai_summary"] = "(주간 게시글 10건 미만 — AI 요약 제외)"
@@ -160,19 +181,30 @@ def run(week_start: str | None = None, verbose: bool = True) -> dict:
                 print(f"  ⏭️  {r['gallery_name']}: 10건 미만, 요약 제외")
             continue
         try:
-            r["ai_summary"] = summarize_weekly_gallery(
+            ai = summarize_weekly_gallery(
                 gallery_name=r["gallery_name"],
                 total_posts=r["total_posts"],
                 top_posts=r["top_posts"],
                 keywords=r["keywords"],
                 week_start=week_start,
                 week_end=week_end,
+                ai_samples=r.pop("_ai_samples", []),
             )
+            r["ai_summary"]    = ai.get("summary", "")
+            r["headline"]      = ai.get("headline", "")
+            r["category_scores"] = ai.get("category_scores", {})
+            r["major_issues"]  = ai.get("major_issues", [])
+            r["sentiment"]     = ai.get("sentiment", {})
+            r["temperature_tag"] = ai.get("temperature_tag", "")
             if verbose:
                 print(f"  ✅ {r['gallery_name']}")
         except Exception as e:
+            r.pop("_ai_samples", None)
             r["ai_summary"] = ""
             print(f"  ❌ {r['gallery_name']} AI 요약 실패: {e}")
+    # 미처리된 _ai_samples 제거 (오류 케이스)
+    for r in results:
+        r.pop("_ai_samples", None)
 
     # 전체 종합 AI 요약
     overall_summary = ""

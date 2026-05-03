@@ -63,7 +63,7 @@ def main() -> None:
     run_id = f"weekly-backfill-{args.start}-{args.end}-{uuid.uuid4().hex[:6]}"
 
     from analyzer.weekly import run as weekly_run
-    from sheets.writer import append_weekly_galleries, append_weekly_overall
+    from sheets.writer import upsert_weekly_galleries, append_weekly_overall
 
     succeeded = 0
     failed = 0
@@ -80,7 +80,7 @@ def main() -> None:
             wk_end    = result["week_end"]
             galleries = result["galleries"]
 
-            append_weekly_galleries(galleries, week_start=wk_start, week_end=wk_end, run_id=run_id)
+            upsert_weekly_galleries(galleries, week_start=wk_start, week_end=wk_end, run_id=run_id)
             append_weekly_overall(result["overall_summary"], week_start=wk_start, week_end=wk_end, run_id=run_id)
             print(f"  ✓ {wk_start} ~ {wk_end}  ({len(galleries)}개 갤러리)", flush=True)
             succeeded += 1

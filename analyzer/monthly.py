@@ -85,13 +85,52 @@ def _aggregate_gallery(rows: list[dict]) -> dict:
             seen.add(h)
             headlines.append(h)
 
+    # category_scores 집계 (일간 v2 데이터에서 카테고리별 최고점/발생일수)
+    cat_agg: dict[str, dict] = {
+        k: {"max_score": 0, "total_score": 0, "issue_days": 0}
+        for k in ("balance", "operation", "bug", "payment", "content")
+    }
+    for r in issue_rows:
+        cs = _parse_json_field(r.get("category_scores"))
+        if not isinstance(cs, dict) or not cs:
+            continue
+        for k in cat_agg:
+            entry = cs.get(k)
+            if isinstance(entry, dict):
+                s = int(entry.get("score", 0))
+                if s > 0:
+                    cat_agg[k]["max_score"]   = max(cat_agg[k]["max_score"], s)
+                    cat_agg[k]["total_score"] += s
+                    cat_agg[k]["issue_days"]  += 1
+
+    # major_issues 샘플 (일간 major_issues에서 중복 제목 제거 후 상위 5개)
+    major_seen: set[str] = set()
+    major_issues_sample: list[dict] = []
+    for r in sorted(issue_rows, key=lambda x: int(x.get("issue_score", 0) or 0), reverse=True):
+        mis = _parse_json_field(r.get("major_issues"))
+        if not isinstance(mis, list):
+            continue
+        for mi in mis:
+            if not isinstance(mi, dict):
+                continue
+            title = str(mi.get("title", "")).strip()
+            if title and title not in major_seen:
+                major_seen.add(title)
+                major_issues_sample.append(mi)
+                if len(major_issues_sample) >= 5:
+                    break
+        if len(major_issues_sample) >= 5:
+            break
+
     return {
-        "issue_days":        issue_days,
-        "total_issue_score": total_issue_score,
-        "max_issue_score":   max_issue_score,
-        "top_cause":         top_cause,
-        "keywords":          keywords,
-        "headlines":         headlines,
+        "issue_days":           issue_days,
+        "total_issue_score":    total_issue_score,
+        "max_issue_score":      max_issue_score,
+        "top_cause":            top_cause,
+        "keywords":             keywords,
+        "headlines":            headlines,
+        "category_scores_agg":  cat_agg,
+        "major_issues_sample":  major_issues_sample,
     }
 
 
@@ -141,24 +180,34 @@ def run(month: str | None = None, verbose: bool = True, dry_run: bool = False) -
     for gid, rows in gallery_rows.items():
         agg = _aggregate_gallery(rows)
         results.append({
-            "gallery_id":        gid,
-            "gallery_name":      gallery_names.get(gid, gid),
-            "issue_days":        agg["issue_days"],
-            "total_issue_score": agg["total_issue_score"],
-            "max_issue_score":   agg["max_issue_score"],
-            "top_cause":         agg["top_cause"],
-            "keywords":          agg["keywords"],
-            "headlines":         agg["headlines"],
-            "ai_summary":        "",
+            "gallery_id":           gid,
+            "gallery_name":         gallery_names.get(gid, gid),
+            "issue_days":           agg["issue_days"],
+            "total_issue_score":    agg["total_issue_score"],
+            "max_issue_score":      agg["max_issue_score"],
+            "top_cause":            agg["top_cause"],
+            "keywords":             agg["keywords"],
+            "headlines":            agg["headlines"],
+            "_category_scores_agg": agg["category_scores_agg"],
+            "_major_issues_sample": agg["major_issues_sample"],
+            "ai_summary":           "",
+            # v2 fields (AI 이후 채워짐)
+            "headline":        "",
+            "category_scores": {},
+            "major_issues":    [],
+            "sentiment":       {},
         })
         if verbose:
             tag = " (이슈 없음 — AI 제외)" if agg["issue_days"] == 0 else ""
             print(f"  {gallery_names.get(gid, gid)}: 이슈 {agg['issue_days']}일, 최고 {agg['max_issue_score']}점{tag}")
 
-    # AI 요약 (이슈 1일 이상인 갤러리만)
+    # AI 요약 v2 (이슈 1일 이상인 갤러리만)
     if verbose:
-        print("\n[AI 요약] 갤러리별 월간 요약 생성 중...")
+        print("\n[AI 요약 v2] 갤러리별 월간 요약 생성 중...")
     for i, r in enumerate(results):
+        cat_agg  = r.pop("_category_scores_agg", {})
+        mis_samp = r.pop("_major_issues_sample", [])
+
         if r["issue_days"] == 0:
             r["ai_summary"] = "(이슈 없음 — AI 요약 제외)"
             if verbose:
@@ -170,7 +219,7 @@ def run(month: str | None = None, verbose: bool = True, dry_run: bool = False) -
         if i > 0:
             time.sleep(2)
         try:
-            r["ai_summary"] = summarize_monthly_gallery(
+            ai = summarize_monthly_gallery(
                 gallery_name=r["gallery_name"],
                 month=month,
                 issue_days=r["issue_days"],
@@ -178,7 +227,14 @@ def run(month: str | None = None, verbose: bool = True, dry_run: bool = False) -
                 top_cause=r["top_cause"],
                 keywords=r["keywords"],
                 headlines=r["headlines"],
+                category_scores_agg=cat_agg,
+                major_issues_sample=mis_samp,
             )
+            r["ai_summary"]      = ai.get("summary", "")
+            r["headline"]        = ai.get("headline", "")
+            r["category_scores"] = ai.get("category_scores", {})
+            r["major_issues"]    = ai.get("major_issues", [])
+            r["sentiment"]       = ai.get("sentiment", {})
             if verbose:
                 print(f"  ✅ {r['gallery_name']}")
         except Exception as e:

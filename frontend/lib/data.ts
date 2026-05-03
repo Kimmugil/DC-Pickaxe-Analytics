@@ -71,16 +71,24 @@ function toDaily(r: Record<string, string>, recentIssueDays?: number): DailyIssu
 
 function toWeekly(r: Record<string, string>): WeeklyGallery {
   return {
-    week_start:   r.week_start ?? '',
-    week_end:     r.week_end ?? '',
-    run_id:       r.run_id,
-    gallery_id:   r.gallery_id ?? '',
-    gallery_name: r.gallery_name ?? '',
-    total_posts:  Math.round(parseNum(r.total_posts)),
-    daily_counts: parseField(r.daily_counts) as WeeklyGallery['daily_counts'],
-    keywords:     parseField(r.keywords) as WeeklyGallery['keywords'],
-    top_posts:    parseField(r.top_posts) as WeeklyGallery['top_posts'],
-    ai_summary:   r.ai_summary ?? '',
+    week_start:      r.week_start ?? '',
+    week_end:        r.week_end ?? '',
+    run_id:          r.run_id,
+    gallery_id:      r.gallery_id ?? '',
+    gallery_name:    r.gallery_name ?? '',
+    total_posts:     Math.round(parseNum(r.total_posts)),
+    daily_counts:    parseField(r.daily_counts) as WeeklyGallery['daily_counts'],
+    keywords:        parseField(r.keywords) as WeeklyGallery['keywords'],
+    top_posts:       parseField(r.top_posts) as WeeklyGallery['top_posts'],
+    ai_summary:      r.ai_summary ?? '',
+    headline:        r.headline || undefined,
+    temperature_tag: r.temperature_tag || undefined,
+    top_cause:       r.top_cause || undefined,
+    category_scores: parseField(r.category_scores) as WeeklyGallery['category_scores'] ?? undefined,
+    major_issues:    parseField(r.major_issues) as WeeklyGallery['major_issues'] ?? undefined,
+    sentiment:       r.sentiment_positive || r.sentiment_negative
+      ? { positive: r.sentiment_positive ?? '', negative: r.sentiment_negative ?? '' }
+      : undefined,
   }
 }
 
@@ -292,6 +300,7 @@ export async function getWeeklyListWithInfo(): Promise<{
   week_end: string
   gallery_count: number
   ai_summary: string
+  top_causes: string[]
 }[]> {
   const [galRows, overallRows] = await Promise.all([
     getWeeklyGalleriesRaw(),
@@ -299,10 +308,21 @@ export async function getWeeklyListWithInfo(): Promise<{
   ])
 
   const weekGalleries = new Map<string, Set<string>>()
+  // week_start → top_cause 빈도 카운트
+  const weekCauses = new Map<string, Map<string, number>>()
+
   for (const r of galRows) {
     if (!r.week_start || !r.gallery_id) continue
     if (!weekGalleries.has(r.week_start)) weekGalleries.set(r.week_start, new Set())
     weekGalleries.get(r.week_start)!.add(r.gallery_id)
+
+    // top_cause 집계
+    const cause = r.top_cause?.trim()
+    if (cause && cause !== '기타') {
+      if (!weekCauses.has(r.week_start)) weekCauses.set(r.week_start, new Map())
+      const m = weekCauses.get(r.week_start)!
+      m.set(cause, (m.get(cause) ?? 0) + 1)
+    }
   }
 
   const overallMap = new Map<string, Record<string, string>>()
@@ -319,11 +339,22 @@ export async function getWeeklyListWithInfo(): Promise<{
       const overall = overallMap.get(week_start)
       const fallbackEnd = new Date(week_start + 'T00:00:00')
       fallbackEnd.setDate(fallbackEnd.getDate() + 6)
+
+      // 빈도순 top causes (최대 3개)
+      const causeCounts = weekCauses.get(week_start)
+      const top_causes = causeCounts
+        ? [...causeCounts.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([c]) => c)
+        : []
+
       return {
         week_start,
         week_end: overall?.week_end ?? fallbackEnd.toISOString().slice(0, 10),
         gallery_count: gallerySet.size,
         ai_summary: overall?.ai_summary ?? '',
+        top_causes,
       }
     })
     .sort((a, b) => b.week_start.localeCompare(a.week_start))
@@ -462,6 +493,13 @@ function toMonthlyGallery(r: Record<string, string>): MonthlyGallery {
     keywords:          parseField(r.keywords) as MonthlyGallery['keywords'],
     headlines:         parseField(r.headlines) as MonthlyGallery['headlines'],
     ai_summary:        r.ai_summary ?? '',
+    headline:          r.headline || undefined,
+    temperature_tag:   r.temperature_tag || undefined,
+    category_scores:   parseField(r.category_scores) as MonthlyGallery['category_scores'] ?? undefined,
+    major_issues:      parseField(r.major_issues) as MonthlyGallery['major_issues'] ?? undefined,
+    sentiment:         r.sentiment_positive || r.sentiment_negative
+      ? { positive: r.sentiment_positive ?? '', negative: r.sentiment_negative ?? '' }
+      : undefined,
   }
 }
 

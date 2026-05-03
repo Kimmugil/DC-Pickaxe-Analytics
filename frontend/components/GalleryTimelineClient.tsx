@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { DailyIssue, WeeklyGallery } from '@/types'
 import { IssueCardFull } from '@/components/IssueCardFull'
 import { WeeklyBarChart } from '@/components/WeeklyBarChart'
-import { FILTER_OPTIONS, CATEGORY_LABEL, normalizeCause } from '@/lib/issueCategories'
+import { FILTER_OPTIONS, CATEGORY_LABEL, CAUSE_STYLE, normalizeCause } from '@/lib/issueCategories'
 
 type TimelineEntry =
   | { kind: 'issue';  sortKey: string; data: DailyIssue }
@@ -33,6 +33,10 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
   const hasCounts = w.daily_counts && Object.keys(w.daily_counts).length > 0
   const hasAI = w.ai_summary && w.ai_summary !== '(주간 게시글 10건 미만 — AI 요약 제외)'
 
+  // v2: top_cause 뱃지
+  const causeLabel = w.top_cause ? normalizeCause(w.top_cause) : null
+  const causeStyle = causeLabel && causeLabel !== '기타' ? CAUSE_STYLE[causeLabel] : null
+
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center shrink-0">
@@ -44,10 +48,25 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
         className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4 flex-1 space-y-3 hover:border-blue-200 transition-colors block"
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-blue-800">
-            {t['gallery_detail.weekly_badge'] ?? '주간'} {fmtWeek(w.week_start, w.week_end)}
-          </span>
-          <span className="text-xs text-blue-400 tabular-nums">{w.total_posts}건</span>
+          <div className="min-w-0">
+            <span className="text-sm font-semibold text-blue-800">
+              {t['gallery_detail.weekly_badge'] ?? '주간'} {fmtWeek(w.week_start, w.week_end)}
+            </span>
+            {w.headline && (
+              <p className="text-xs text-blue-600 mt-0.5 leading-snug">{w.headline}</p>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className="text-xs text-blue-400 tabular-nums">{w.total_posts}건</span>
+            {causeStyle && causeLabel && (
+              <span
+                className="text-[10px] px-1 py-0.5 rounded font-medium"
+                style={{ backgroundColor: causeStyle.bg, color: causeStyle.text }}
+              >
+                {causeLabel}
+              </span>
+            )}
+          </div>
         </div>
         {hasCounts && <WeeklyBarChart dailyCounts={w.daily_counts!} />}
         {hasAI && (

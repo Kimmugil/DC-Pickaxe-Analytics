@@ -31,6 +31,9 @@ _HEADERS = {
     "weekly_galleries": [
         "week_start", "week_end", "run_id", "gallery_id", "gallery_name",
         "total_posts", "daily_counts", "keywords", "top_posts", "ai_summary",
+        # v2: 구조화 분석 필드
+        "headline", "category_scores", "major_issues",
+        "sentiment_positive", "sentiment_negative", "temperature_tag",
     ],
     "weekly_overall": [
         "week_start", "week_end", "run_id", "ai_summary",
@@ -39,6 +42,9 @@ _HEADERS = {
         "month", "run_id", "gallery_id", "gallery_name",
         "issue_days", "total_issue_score", "max_issue_score",
         "top_cause", "keywords", "headlines", "ai_summary",
+        # v2: 구조화 분석 필드
+        "headline", "category_scores", "major_issues",
+        "sentiment_positive", "sentiment_negative",
     ],
     "monthly_overall": [
         "month", "run_id", "ai_summary",
@@ -219,25 +225,81 @@ def _build_daily_row(r: dict, date: str, run_id: str, total_cols: int) -> list:
 
 # ── 주간 갤러리별 적재 ────────────────────────────────────────────────
 
+def _build_weekly_row(r: dict, week_start: str, week_end: str, run_id: str, total_cols: int) -> list:
+    """weekly_galleries 헤더 순서에 맞는 행 데이터를 반환합니다."""
+    base = [
+        week_start, week_end, run_id,
+        r.get("gallery_id", ""), r.get("gallery_name", ""),
+        r.get("total_posts", 0),
+        json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
+        json.dumps(r.get("keywords", []), ensure_ascii=False),
+        json.dumps(r.get("top_posts", []), ensure_ascii=False),
+        r.get("ai_summary", ""),
+        # v2
+        r.get("headline", ""),
+        json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+        json.dumps(r.get("major_issues", []), ensure_ascii=False),
+        r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
+        r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
+        r.get("temperature_tag", ""),
+    ]
+    while len(base) < total_cols:
+        base.append("")
+    return base
+
+
 def append_weekly_galleries(
     results: list[dict], week_start: str, week_end: str, run_id: str
 ) -> None:
     """weekly_galleries 시트에 주간 갤러리별 분석 결과를 추가합니다."""
     ws = _spreadsheet().worksheet("weekly_galleries")
-    rows = [
-        [
-            week_start, week_end, run_id,
-            r.get("gallery_id", ""), r.get("gallery_name", ""),
-            r.get("total_posts", 0),
-            json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
-            json.dumps(r.get("keywords", []), ensure_ascii=False),
-            json.dumps(r.get("top_posts", []), ensure_ascii=False),
-            r.get("ai_summary", ""),
-        ]
-        for r in results
-    ]
+    _ensure_headers(ws, _HEADERS["weekly_galleries"])
+    headers = ws.row_values(1)
+    rows = [_build_weekly_row(r, week_start, week_end, run_id, len(headers)) for r in results]
     if rows:
         ws.append_rows(rows, value_input_option="RAW")
+
+
+def upsert_weekly_galleries(
+    results: list[dict], week_start: str, week_end: str, run_id: str
+) -> None:
+    """
+    weekly_galleries 시트에 주간 갤러리별 분석 결과를 upsert합니다.
+    (week_start, gallery_id) 기준으로 기존 행이 있으면 덮어쓰고, 없으면 추가합니다.
+    백필 재분석 전용.
+    """
+    ws = _spreadsheet().worksheet("weekly_galleries")
+    _ensure_headers(ws, _HEADERS["weekly_galleries"])
+
+    all_values = ws.get_all_values()
+    headers = all_values[0] if all_values else []
+    col = {h: i for i, h in enumerate(headers)}
+
+    row_map: dict[tuple[str, str], int] = {}
+    for row_idx, row in enumerate(all_values[1:], start=2):
+        ws_val = row[col["week_start"]] if "week_start" in col and col["week_start"] < len(row) else ""
+        gid    = row[col["gallery_id"]] if "gallery_id" in col and col["gallery_id"] < len(row) else ""
+        if ws_val and gid:
+            row_map[(ws_val, gid)] = row_idx
+
+    new_rows: list[list] = []
+    update_batch: list[tuple[int, list]] = []
+
+    for r in results:
+        row_data = _build_weekly_row(r, week_start, week_end, run_id, len(headers))
+        key = (week_start, r.get("gallery_id", ""))
+        if key in row_map:
+            update_batch.append((row_map[key], row_data))
+        else:
+            new_rows.append(row_data)
+
+    for row_idx, row_data in update_batch:
+        ws.update(f"A{row_idx}", [row_data])
+
+    if new_rows:
+        ws.append_rows(new_rows, value_input_option="RAW")
+
+    print(f"  [weekly_galleries] upsert: {len(update_batch)}행 업데이트 / {len(new_rows)}행 신규 추가", flush=True)
 
 
 # ── 주간 종합 요약 적재 ───────────────────────────────────────────────
@@ -327,6 +389,12 @@ def _build_monthly_row(r: dict, month: str, run_id: str, total_cols: int) -> lis
         json.dumps(r.get("keywords", []), ensure_ascii=False),
         json.dumps(r.get("headlines", []), ensure_ascii=False),
         r.get("ai_summary", ""),
+        # v2
+        r.get("headline", ""),
+        json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+        json.dumps(r.get("major_issues", []), ensure_ascii=False),
+        r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
+        r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
     ]
     while len(base) < total_cols:
         base.append("")
