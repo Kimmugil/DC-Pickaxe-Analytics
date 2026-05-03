@@ -62,10 +62,10 @@ def summarize_daily_issue(
     gallery_name: str,
     top_posts: list[dict],
     keywords: list[list],
-    ai_samples: list[dict] | None = None,
     issue_score: int,
     count_today: int,
     avg_7d: float,
+    ai_samples: list[dict] | None = None,
 ) -> dict:
     """
     Returns: {
@@ -235,10 +235,10 @@ def summarize_daily_borderline(
     gallery_name: str,
     top_posts: list[dict],
     keywords: list[list],
-    ai_samples: list[dict] | None = None,
     issue_score: int,
     count_today: int,
     avg_baseline: float,
+    ai_samples: list[dict] | None = None,
 ) -> dict:
     """
     Returns: { summary, temperature_tag }
