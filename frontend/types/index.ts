@@ -75,3 +75,23 @@ export interface WeeklyData {
     ai_summary?: string
   }
 }
+
+export interface MonthlyGallery {
+  month: string
+  run_id?: string
+  gallery_id: string
+  gallery_name: string
+  issue_days: number
+  total_issue_score: number
+  max_issue_score: number
+  top_cause: string
+  keywords: [string, number][] | null
+  headlines: string[] | null
+  ai_summary: string
+}
+
+export interface MonthlyOverall {
+  month: string
+  run_id?: string
+  ai_summary: string
+}

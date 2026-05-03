@@ -35,6 +35,14 @@ _HEADERS = {
     "weekly_overall": [
         "week_start", "week_end", "run_id", "ai_summary",
     ],
+    "monthly_issues": [
+        "month", "run_id", "gallery_id", "gallery_name",
+        "issue_days", "total_issue_score", "max_issue_score",
+        "top_cause", "keywords", "headlines", "ai_summary",
+    ],
+    "monthly_overall": [
+        "month", "run_id", "ai_summary",
+    ],
 }
 
 
@@ -242,3 +250,111 @@ def append_weekly_overall(
         [week_start, week_end, run_id, ai_summary],
         value_input_option="RAW",
     )
+
+
+# ── 월간 시트 초기화 ──────────────────────────────────────────────────
+
+def _get_or_create_worksheet(sh: gspread.Spreadsheet, name: str, headers: list[str]) -> "gspread.Worksheet":
+    """시트가 없으면 생성하고, 있으면 헤더만 확인."""
+    existing = {ws.title for ws in sh.worksheets()}
+    if name not in existing:
+        ws = sh.add_worksheet(title=name, rows=2000, cols=len(headers))
+        ws.append_row(headers, value_input_option="RAW")
+        print(f"  [생성] {name}")
+    else:
+        ws = sh.worksheet(name)
+        _ensure_headers(ws, headers)
+    return ws
+
+
+def setup_monthly_sheets() -> None:
+    """monthly_issues / monthly_overall 시트를 생성/초기화합니다."""
+    sh = _spreadsheet()
+    for name in ("monthly_issues", "monthly_overall"):
+        _get_or_create_worksheet(sh, name, _HEADERS[name])
+        print(f"  [완료] {name}")
+
+
+# ── 월간 갤러리별 upsert ──────────────────────────────────────────────
+
+def upsert_monthly_issues(results: list[dict], month: str, run_id: str) -> None:
+    """
+    monthly_issues 시트에 월간 갤러리별 분석 결과를 upsert합니다.
+    (month, gallery_id) 기준.
+    """
+    sh = _spreadsheet()
+    ws = _get_or_create_worksheet(sh, "monthly_issues", _HEADERS["monthly_issues"])
+
+    all_values = ws.get_all_values()
+    headers = all_values[0] if all_values else []
+    col = {h: i for i, h in enumerate(headers)}
+
+    row_map: dict[tuple[str, str], int] = {}
+    for row_idx, row in enumerate(all_values[1:], start=2):
+        m   = row[col["month"]]      if "month"       in col and col["month"]       < len(row) else ""
+        gid = row[col["gallery_id"]] if "gallery_id"  in col and col["gallery_id"]  < len(row) else ""
+        if m and gid:
+            row_map[(m, gid)] = row_idx
+
+    new_rows: list[list] = []
+    update_batch: list[tuple[int, list]] = []
+
+    for r in results:
+        row_data = _build_monthly_row(r, month, run_id, len(headers))
+        key = (month, r.get("gallery_id", ""))
+        if key in row_map:
+            update_batch.append((row_map[key], row_data))
+        else:
+            new_rows.append(row_data)
+
+    for row_idx, row_data in update_batch:
+        ws.update(f"A{row_idx}", [row_data])
+
+    if new_rows:
+        ws.append_rows(new_rows, value_input_option="RAW")
+
+    print(f"  [monthly_issues] upsert: {len(update_batch)}행 업데이트 / {len(new_rows)}행 신규 추가", flush=True)
+
+
+def _build_monthly_row(r: dict, month: str, run_id: str, total_cols: int) -> list:
+    base = [
+        month, run_id,
+        r.get("gallery_id", ""), r.get("gallery_name", ""),
+        r.get("issue_days", 0),
+        r.get("total_issue_score", 0),
+        r.get("max_issue_score", 0),
+        r.get("top_cause", ""),
+        json.dumps(r.get("keywords", []), ensure_ascii=False),
+        json.dumps(r.get("headlines", []), ensure_ascii=False),
+        r.get("ai_summary", ""),
+    ]
+    while len(base) < total_cols:
+        base.append("")
+    return base
+
+
+# ── 월간 종합 요약 upsert ─────────────────────────────────────────────
+
+def upsert_monthly_overall(ai_summary: str, month: str, run_id: str) -> None:
+    """monthly_overall 시트에 월간 종합 요약을 upsert합니다."""
+    sh = _spreadsheet()
+    ws = _get_or_create_worksheet(sh, "monthly_overall", _HEADERS["monthly_overall"])
+
+    all_values = ws.get_all_values()
+    headers = all_values[0] if all_values else []
+    col = {h: i for i, h in enumerate(headers)}
+
+    row_idx = None
+    for idx, row in enumerate(all_values[1:], start=2):
+        m = row[col["month"]] if "month" in col and col["month"] < len(row) else ""
+        if m == month:
+            row_idx = idx
+            break
+
+    row_data = [month, run_id, ai_summary]
+    if row_idx:
+        ws.update(f"A{row_idx}", [row_data])
+        print(f"  [monthly_overall] {month} 업데이트", flush=True)
+    else:
+        ws.append_row(row_data, value_input_option="RAW")
+        print(f"  [monthly_overall] {month} 신규 추가", flush=True)

@@ -1,0 +1,43 @@
+name: Monthly Report Analysis
+
+on:
+  # 매월 1일 09:00 KST (= UTC 00:00) — 직전 월 분석
+  schedule:
+    - cron: '0 0 1 * *'
+
+  # 수동 실행
+  workflow_dispatch:
+    inputs:
+      month:
+        description: '분석 월 YYYY-MM. 비워두면 직전 월.'
+        required: false
+        default: ''
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monthly analysis
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          MONTH_ARG=""
+          if [ -n "${{ github.event.inputs.month }}" ]; then
+            MONTH_ARG="--month ${{ github.event.inputs.month }}"
+          fi
+          python run_monthly.py $MONTH_ARG

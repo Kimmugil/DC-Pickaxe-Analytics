@@ -407,3 +407,54 @@ def get_latest_daily_issue_info() -> dict | None:
     row = df.iloc[0]
     count = int((df["date"] == row["date"]).sum())
     return {"date": str(row.get("date", "")), "issue_gallery_count": count}
+
+
+def get_all_daily_issues() -> list[dict]:
+    """
+    daily_issues Analytics 탭의 모든 행을 반환합니다 (has_issue 필터 없음).
+    월간 분석에서 집계 용도로 사용.
+    Returns: list of dicts (모든 컬럼 포함)
+    """
+    df = _analytics_sheet("daily_issues")
+    if df.empty:
+        return []
+    return df.to_dict("records")
+
+
+def get_monthly_issues_list() -> list[str]:
+    """월간 분석이 존재하는 month(YYYY-MM) 목록 (최신순)."""
+    df = _analytics_sheet("monthly_issues")
+    if df.empty or "month" not in df.columns:
+        return []
+    return sorted(df["month"].unique().tolist(), reverse=True)
+
+
+def get_monthly_galleries(month: str) -> pd.DataFrame:
+    """특정 월의 갤러리별 월간 분석 결과."""
+    df = _analytics_sheet("monthly_issues")
+    if df.empty or "month" not in df.columns:
+        return pd.DataFrame()
+    df = df[df["month"] == month].copy()
+    if "gallery_id" in df.columns and not df.empty:
+        df = df.drop_duplicates(subset="gallery_id", keep="last")
+    return df.reset_index(drop=True)
+
+
+def get_monthly_overall(month: str) -> dict | None:
+    """특정 월의 전체 종합 요약."""
+    df = _analytics_sheet("monthly_overall")
+    if df.empty or "month" not in df.columns:
+        return None
+    rows = df[df["month"] == month]
+    if rows.empty:
+        return None
+    return rows.iloc[-1].to_dict()
+
+
+def get_latest_monthly_overall() -> dict | None:
+    """가장 최근 월간 종합 요약."""
+    df = _analytics_sheet("monthly_overall")
+    if df.empty or "month" not in df.columns:
+        return None
+    df = df.sort_values("month", ascending=False)
+    return df.iloc[0].to_dict()

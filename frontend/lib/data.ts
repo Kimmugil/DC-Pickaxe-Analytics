@@ -3,8 +3,8 @@
  * Google Sheets raw 데이터를 파싱해 타입이 맞는 객체로 변환.
  */
 
-import type { DailyIssue, WeeklyGallery, WeeklyData } from '@/types'
-import { getDailyIssuesRaw, getWeeklyGalleriesRaw, getWeeklyOverallRaw } from './sheets'
+import type { DailyIssue, WeeklyGallery, WeeklyData, MonthlyGallery, MonthlyOverall } from '@/types'
+import { getDailyIssuesRaw, getWeeklyGalleriesRaw, getWeeklyOverallRaw, getMonthlyIssuesRaw, getMonthlyOverallRaw } from './sheets'
 
 export type TimelineItem =
   | { kind: 'issue';  date: string; issue_count: number; max_score: number; galleries: { id: string; name: string; score: number }[]; issues: DailyIssue[] }
@@ -445,6 +445,96 @@ export async function getIssueFeed(limit = 80): Promise<DailyIssue[]> {
     .map(r => toDaily(r))
     .sort((a, b) => b.date.localeCompare(a.date) || b.issue_score - a.issue_score)
     .slice(0, limit)
+}
+
+// ── Monthly converters ─────────────────────────────────────────────────
+
+function toMonthlyGallery(r: Record<string, string>): MonthlyGallery {
+  return {
+    month:             r.month ?? '',
+    run_id:            r.run_id,
+    gallery_id:        r.gallery_id ?? '',
+    gallery_name:      r.gallery_name ?? '',
+    issue_days:        Math.round(parseNum(r.issue_days)),
+    total_issue_score: Math.round(parseNum(r.total_issue_score)),
+    max_issue_score:   Math.round(parseNum(r.max_issue_score)),
+    top_cause:         r.top_cause ?? '',
+    keywords:          parseField(r.keywords) as MonthlyGallery['keywords'],
+    headlines:         parseField(r.headlines) as MonthlyGallery['headlines'],
+    ai_summary:        r.ai_summary ?? '',
+  }
+}
+
+export async function getLatestMonthlyOverall(): Promise<MonthlyOverall | null> {
+  const rows = await getMonthlyOverallRaw().catch(() => [])
+  if (!rows.length) return null
+  const sorted = [...rows].sort((a, b) => (b.month ?? '').localeCompare(a.month ?? ''))
+  const r = sorted[0]
+  return { month: r.month ?? '', run_id: r.run_id, ai_summary: r.ai_summary ?? '' }
+}
+
+export async function getMonthlyListWithInfo(): Promise<{
+  month: string
+  gallery_count: number
+  ai_summary: string
+}[]> {
+  const [issueRows, overallRows] = await Promise.all([
+    getMonthlyIssuesRaw().catch(() => []),
+    getMonthlyOverallRaw().catch(() => []),
+  ])
+
+  const monthGalleries = new Map<string, Set<string>>()
+  for (const r of issueRows) {
+    if (!r.month || !r.gallery_id) continue
+    if (!monthGalleries.has(r.month)) monthGalleries.set(r.month, new Set())
+    monthGalleries.get(r.month)!.add(r.gallery_id)
+  }
+
+  const overallMap = new Map<string, Record<string, string>>()
+  for (const r of overallRows) {
+    if (!r.month) continue
+    const existing = overallMap.get(r.month)
+    if (!existing || (r.run_id ?? '') > (existing.run_id ?? '')) {
+      overallMap.set(r.month, r)
+    }
+  }
+
+  return Array.from(monthGalleries.entries())
+    .map(([month, gallerySet]) => ({
+      month,
+      gallery_count: gallerySet.size,
+      ai_summary: overallMap.get(month)?.ai_summary ?? '',
+    }))
+    .sort((a, b) => b.month.localeCompare(a.month))
+}
+
+export async function getMonthlyByMonth(month: string): Promise<{
+  galleries: MonthlyGallery[]
+  overall: MonthlyOverall | null
+}> {
+  const [issueRows, overallRows] = await Promise.all([
+    getMonthlyIssuesRaw().catch(() => []),
+    getMonthlyOverallRaw().catch(() => []),
+  ])
+
+  const galleryMap = new Map<string, Record<string, string>>()
+  issueRows
+    .filter(r => r.month === month)
+    .forEach(r => galleryMap.set(r.gallery_id, r))
+
+  const galleries = Array.from(galleryMap.values())
+    .map(toMonthlyGallery)
+    .sort((a, b) => b.issue_days - a.issue_days || b.max_issue_score - a.max_issue_score)
+
+  const overallRow = [...overallRows]
+    .filter(r => r.month === month)
+    .sort((a, b) => (b.run_id ?? '').localeCompare(a.run_id ?? ''))[0]
+
+  const overall: MonthlyOverall | null = overallRow
+    ? { month: overallRow.month ?? month, run_id: overallRow.run_id, ai_summary: overallRow.ai_summary ?? '' }
+    : null
+
+  return { galleries, overall }
 }
 
 export async function getAllTimeline(limit = 120): Promise<TimelineItem[]> {

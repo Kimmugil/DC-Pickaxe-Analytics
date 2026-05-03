@@ -313,6 +313,83 @@ def summarize_weekly_gallery(
     return _call(prompt)
 
 
+# ── 월간 갤러리별 요약 ────────────────────────────────────────────────
+
+def summarize_monthly_gallery(
+    gallery_name: str,
+    month: str,
+    issue_days: int,
+    max_issue_score: int,
+    top_cause: str,
+    keywords: list[list],
+    headlines: list[str],
+) -> str:
+    kw_str = ", ".join(kw for kw, _ in keywords[:10]) if keywords else "없음"
+    headline_md = "\n".join(f"- {h}" for h in headlines[:10]) if headlines else "(없음)"
+    cause_map = {
+        "balance": "밸런스", "operation": "운영", "bug": "버그",
+        "payment": "결제", "content": "컨텐츠",
+    }
+    cause_ko = cause_map.get(top_cause, top_cause or "기타")
+    prompt = f"""DC인사이드 게임 갤러리 월간 동향을 분석하는 어시스턴트입니다.
+
+## 갤러리: {gallery_name} ({month})
+- 이슈 발생일: {issue_days}일
+- 최고 이슈 점수: {max_issue_score}/10
+- 주요 이슈 유형: {cause_ko}
+- 주요 키워드: {kw_str}
+- 이슈 헤드라인 목록:
+{headline_md}
+
+위 데이터를 바탕으로 이 갤러리의 **이번 달 동향 요약**을 3~4문장으로 작성하세요.
+
+조건:
+- 한국어로 작성
+- 마크다운 헤딩 금지
+- 3~4문장 이내
+- 이달 주요 이슈의 원인과 커뮤니티 분위기를 중심으로
+- 종결어미 '~습니다/ㅂ니다' 체 통일. 행동 권고 금지. 없는 사실 추론 금지"""
+    return _call(prompt)
+
+
+# ── 월간 전체 종합 요약 ───────────────────────────────────────────────
+
+def summarize_monthly_overall(
+    gallery_results: list[dict],
+    month: str,
+) -> str:
+    summaries_md = "\n\n".join(
+        f"### {r['gallery_name']} (이슈 {r['issue_days']}일, 최고 점수 {r['max_issue_score']}점)\n{r['ai_summary']}"
+        for r in gallery_results
+        if r.get("ai_summary") and r["ai_summary"] != "(이슈 없음 — AI 요약 제외)"
+    )
+    if not summaries_md:
+        return ""
+
+    gallery_list = ", ".join(r["gallery_name"] for r in gallery_results)
+    prompt = f"""키우기 장르 DC인사이드 갤러리들의 월간 동향을 종합 분석하는 어시스턴트입니다.
+
+## 분석 기간: {month}
+## 분석 갤러리: {gallery_list}
+
+### 갤러리별 월간 요약
+{summaries_md}
+
+위 내용을 바탕으로 **전체 월간 종합 요약**을 작성하세요:
+- 이번 달 키우기 장르 전반의 공통 분위기와 주요 화제
+- 갤러리별로 두드러진 이슈의 원인과 유저 반응의 특징
+- 전반적으로 커뮤니티 정서가 어떤 방향으로 흘렀는지
+
+조건:
+- 한국어로 작성
+- 마크다운 헤딩은 ## 이하만 사용 (h1 금지)
+- 5~7문장 이내
+- 원인과 맥락을 포함한 서술
+- 사실과 민심을 객관적으로 서술. 행동 제안이나 권고 금지
+- 모든 문장은 종결어미를 '~습니다/ㅂ니다' 체로 통일"""
+    return _call(prompt)
+
+
 # ── 주간 전체 종합 요약 ───────────────────────────────────────────────
 
 def summarize_weekly_overall(

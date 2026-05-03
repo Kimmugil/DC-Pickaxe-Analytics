@@ -1,0 +1,49 @@
+name: Backfill Monthly Reports
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_month:
+        description: '시작 월 YYYY-MM (예: 2026-01)'
+        required: true
+        default: '2026-01'
+      end_month:
+        description: '종료 월 YYYY-MM (예: 2026-04)'
+        required: true
+        default: '2026-04'
+      dry_run:
+        description: 'dry-run (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monthly backfill
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DC_PICKAXE_MASTER_SHEET_URL: ${{ secrets.DC_PICKAXE_MASTER_SHEET_URL }}
+          ANALYTICS_SPREADSHEET_ID:   ${{ secrets.ANALYTICS_SPREADSHEET_ID }}
+          GEMINI_API_KEY:              ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          python backfill_monthly.py \
+            --start "${{ github.event.inputs.start_month }}" \
+            --end   "${{ github.event.inputs.end_month }}" \
+            $DRY_RUN_FLAG

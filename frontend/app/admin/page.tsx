@@ -35,6 +35,13 @@ export default function AdminPage() {
   const [weeklyEnd, setWeeklyEnd]       = useState('2026-04-28')
   const [weeklyDryRun, setWeeklyDryRun] = useState(false)
 
+  // 월간 백필
+  const [monthlyStatus, setMonthlyStatus] = useState<ActionStatus>('idle')
+  const [monthlyMsg, setMonthlyMsg]       = useState('')
+  const [monthlyStart, setMonthlyStart]   = useState('2026-01')
+  const [monthlyEnd, setMonthlyEnd]       = useState('2026-04')
+  const [monthlyDryRun, setMonthlyDryRun] = useState(false)
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setAuthLoading(true)
@@ -54,6 +61,30 @@ export default function AdminPage() {
       setAuthError(true)
     } finally {
       setAuthLoading(false)
+    }
+  }
+
+  async function handleMonthlyBackfill() {
+    if (!monthlyStart || !monthlyEnd) return
+    setMonthlyStatus('running')
+    setMonthlyMsg('')
+    try {
+      const res = await fetch('/api/admin/trigger-backfill-monthly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, start_month: monthlyStart, end_month: monthlyEnd, dry_run: monthlyDryRun }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setMonthlyMsg(data.error ?? `오류 (${res.status})`)
+        setMonthlyStatus('error')
+      } else {
+        setMonthlyStatus('done')
+        setMonthlyMsg(`${monthlyDryRun ? '[dry-run] ' : ''}${monthlyStart} ~ ${monthlyEnd} 월간 백필 작업이 GitHub Actions에서 시작됐습니다.`)
+      }
+    } catch (err: unknown) {
+      setMonthlyMsg(String(err))
+      setMonthlyStatus('error')
     }
   }
 
@@ -250,6 +281,55 @@ export default function AdminPage() {
                 {weeklyStatus === 'running' ? '실행 중...' : '주간 백필 실행'}
               </button>
               <StatusMsg status={weeklyStatus} msg={weeklyMsg} />
+            </div>
+
+            {/* ── 월간 백필 ── */}
+            <div className="bg-white border border-purple-100 rounded-lg p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-1">월간 분석 백필 <span className="text-[11px] text-purple-600 font-normal ml-1">monthly</span></h2>
+              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                daily_issues 탭에서 기간 내 데이터를 읽어 월별로 집계하고 AI 요약을 생성해 monthly_issues / monthly_overall 시트에 적재합니다.
+              </p>
+
+              <div className="space-y-2 mb-4">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[11px] text-gray-400 block mb-1">시작 월 (YYYY-MM)</label>
+                    <input
+                      type="month"
+                      value={monthlyStart}
+                      onChange={e => setMonthlyStart(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[11px] text-gray-400 block mb-1">종료 월 (YYYY-MM)</label>
+                    <input
+                      type="month"
+                      value={monthlyEnd}
+                      onChange={e => setMonthlyEnd(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={monthlyDryRun}
+                    onChange={e => setMonthlyDryRun(e.target.checked)}
+                    className="rounded"
+                  />
+                  dry-run (실제 쓰기 없이 대상 목록만 출력)
+                </label>
+              </div>
+
+              <button
+                onClick={handleMonthlyBackfill}
+                disabled={monthlyStatus === 'running' || !monthlyStart || !monthlyEnd}
+                className="bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-sm px-4 py-2 rounded transition-colors"
+              >
+                {monthlyStatus === 'running' ? '실행 중...' : '월간 백필 실행'}
+              </button>
+              <StatusMsg status={monthlyStatus} msg={monthlyMsg} />
             </div>
 
             {/* ── 캐시 초기화 ── */}

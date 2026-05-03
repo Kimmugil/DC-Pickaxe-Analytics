@@ -4,9 +4,9 @@ import {
   getCalendarData,
   getLatestWeeklyOverall,
   getRecentIssues,
-  getWeeklyListWithInfo,
+  getLatestMonthlyOverall,
 } from '@/lib/data'
-import { getTexts, tp } from '@/lib/texts'
+import { getTexts } from '@/lib/texts'
 import { Nav } from '@/components/Nav'
 import { CalendarClient } from '@/components/CalendarClient'
 import { IssueCardFull } from '@/components/IssueCardFull'
@@ -17,28 +17,17 @@ function fmtShort(d: string) {
   return `${m}월 ${day}일`
 }
 
-function fmtMonth(d: string) {
-  if (!d) return ''
-  const [y, m] = d.split('-').map(Number)
-  return `${y}년 ${m}월`
-}
-
 // ── 직전 월 요약 ────────────────────────────────────────────────────
 function MonthlySection({
-  weeklyList,
+  monthly,
   t,
 }: {
-  weeklyList: Awaited<ReturnType<typeof getWeeklyListWithInfo>>
+  monthly: Awaited<ReturnType<typeof getLatestMonthlyOverall>>
   t: Record<string, string>
 }) {
-  if (!weeklyList.length) return null
+  if (!monthly?.ai_summary) return null
 
-  // 가장 최근 달 기준
-  const latestMonth = weeklyList[0].week_start.slice(0, 7) // 'YYYY-MM'
-  const thisMonthWeeks = weeklyList.filter(w => w.week_start.slice(0, 7) === latestMonth)
-  if (!thisMonthWeeks.length) return null
-
-  const [y, m] = latestMonth.split('-').map(Number)
+  const [y, m] = monthly.month.split('-').map(Number)
 
   return (
     <section className="space-y-3">
@@ -47,36 +36,14 @@ function MonthlySection({
           <h2 className="text-sm font-semibold text-gray-900">
             {t['home.monthly_summary.title'] ?? `${y}년 ${m}월 요약`}
           </h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {tp(t, 'home.monthly_summary.week_count', { count: thisMonthWeeks.length }, '{count}주')}
-          </p>
+          <p className="text-xs text-gray-400 mt-0.5">{`${y}년 ${m}월`}</p>
         </div>
         <Link href="/reports" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
           {t['common.view_all'] ?? '전체 보기 →'}
         </Link>
       </div>
-      <div className="space-y-2">
-        {thisMonthWeeks.map(w => (
-          <Link
-            key={w.week_start}
-            href={`/weekly/${w.week_start}`}
-            className="block bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-xs font-semibold text-gray-700">
-                {fmtShort(w.week_start)} ~ {fmtShort(w.week_end)}
-              </span>
-              <span className="text-[11px] text-gray-400 tabular-nums shrink-0">
-                {tp(t, 'common.gallery_count', { count: w.gallery_count }, '{count}개')}
-              </span>
-            </div>
-            {w.ai_summary ? (
-              <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{w.ai_summary}</p>
-            ) : (
-              <p className="text-xs text-gray-300">{t['common.no_summary'] ?? '요약 없음'}</p>
-            )}
-          </Link>
-        ))}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{monthly.ai_summary}</p>
       </div>
     </section>
   )
@@ -120,7 +87,7 @@ function WeeklySummarySection({
 // ── 홈 페이지 ─────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const [t, cal, recentIssues, weeklySummary, weeklyList] = await Promise.all([
+  const [t, cal, recentIssues, weeklySummary, monthlySummary] = await Promise.all([
     getTexts(),
     getCalendarData().catch(() => ({
       issuesByDate: {} as Record<string, { id: string; name: string; score: number; cause?: string }[]>,
@@ -128,7 +95,7 @@ export default async function HomePage() {
     })),
     getRecentIssues(3).catch(() => [] as DailyIssue[]),
     getLatestWeeklyOverall().catch(() => null),
-    getWeeklyListWithInfo().catch(() => []),
+    getLatestMonthlyOverall().catch(() => null),
   ])
 
   return (
@@ -187,7 +154,7 @@ export default async function HomePage() {
         <WeeklySummarySection data={weeklySummary} t={t} />
 
         {/* ④ 직전 월 요약 */}
-        <MonthlySection weeklyList={weeklyList} t={t} />
+        <MonthlySection monthly={monthlySummary} t={t} />
 
       </main>
     </div>

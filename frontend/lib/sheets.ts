@@ -104,3 +104,15 @@ export const getUITextsRaw = unstable_cache(
   ['sheet:ui_texts'],
   { revalidate: 300, tags: ['sheet:ui_texts'] },
 )
+
+export const getMonthlyIssuesRaw = unstable_cache(
+  () => fetchSheet('monthly_issues'),
+  ['sheet:monthly_issues'],
+  { revalidate: 300, tags: ['sheet:monthly_issues'] },
+)
+
+export const getMonthlyOverallRaw = unstable_cache(
+  () => fetchSheet('monthly_overall'),
+  ['sheet:monthly_overall'],
+  { revalidate: 300, tags: ['sheet:monthly_overall'] },
+)
