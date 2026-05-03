@@ -14,6 +14,7 @@ interface GalleryEntry {
 interface Props {
   issuesByDate: Record<string, GalleryEntry[]>
   weeklyDates: string[]
+  t?: Record<string, string>
 }
 
 function toDateStr(d: Date) {
@@ -39,7 +40,7 @@ function CauseBadge({ cause }: { cause?: string }) {
   )
 }
 
-export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
+export function CalendarClient({ issuesByDate, weeklyDates, t = {} }: Props) {
   const now = new Date()
   const todayStr = toDateStr(now)
   const curYear  = now.getUTCFullYear()
@@ -114,11 +115,11 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
             const hasIssue  = galleries.length > 0
             const hasWeekly = inMonth && !isFuture && weeklySet.has(dateStr)
 
-            const cell = (
+            return (
               <div
+                key={dateStr}
                 className={`min-h-[72px] p-1 rounded transition-colors ${
-                  isToday ? 'bg-blue-50 ring-1 ring-blue-200' :
-                  (hasIssue || hasWeekly) ? 'hover:bg-gray-50 cursor-pointer' : ''
+                  isToday ? 'bg-blue-50 ring-1 ring-blue-200' : ''
                 }`}
               >
                 {/* Date number */}
@@ -130,18 +131,22 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                     isSun ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-700'
                   }`}>
                     {cd}
-                    {isToday && <span className="ml-1 text-[9px] font-normal text-blue-400">오늘</span>}
+                    {isToday && <span className="ml-1 text-[9px] font-normal text-blue-400">{t['calendar.today'] ?? '오늘'}</span>}
                   </span>
-                  {hasWeekly && (
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: '#93c5fd' }}
-                      title="주간 리포트"
-                    />
-                  )}
                 </div>
 
-                {/* Gallery issue badges — each links to the specific card */}
+                {/* 주간 리포트 이벤트 바 */}
+                {hasWeekly && (
+                  <Link
+                    href={`/weekly/${dateStr}`}
+                    className="block w-full text-left text-[9px] leading-tight px-1 py-0.5 rounded-sm mb-0.5 font-semibold truncate"
+                    style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}
+                  >
+                    {t['calendar.weekly_label'] ?? '주간 리포트'}
+                  </Link>
+                )}
+
+                {/* 갤러리 이슈 배지 — 개별 클릭 */}
                 {hasIssue && (
                   <div className="flex flex-col gap-px">
                     {galleries.slice(0, 3).map(g => {
@@ -149,8 +154,7 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                       return (
                         <Link
                           key={g.id}
-                          href={`/daily/${dateStr}#issue-${g.id}`}
-                          onClick={e => e.stopPropagation()}
+                          href={`/gallery/${g.id}#issue-${dateStr}`}
                           className="flex items-center gap-0.5 rounded-sm px-0.5 py-px"
                           style={{ backgroundColor: c.bg }}
                         >
@@ -179,12 +183,6 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
                 )}
               </div>
             )
-
-            if (!isFuture && inMonth && (hasIssue || hasWeekly)) {
-              const href = hasIssue ? `/daily/${dateStr}` : `/weekly/${dateStr}`
-              return <Link key={dateStr} href={href}>{cell}</Link>
-            }
-            return <div key={dateStr}>{cell}</div>
           })}
         </div>
       ))}
@@ -192,15 +190,15 @@ export function CalendarClient({ issuesByDate, weeklyDates }: Props) {
       <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ede9fe' }} />
-          이슈 (갤러리별 색상)
+          {t['calendar.legend_issue'] ?? '이슈 (갤러리별 색상)'}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#93c5fd' }} />
-          주간 리포트
+          <span className="inline-block w-10 h-3 rounded-sm" style={{ backgroundColor: '#dbeafe' }} />
+          {t['calendar.legend_weekly'] ?? '주간 리포트'}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="text-[8px] px-0.5 rounded font-semibold" style={{ backgroundColor: '#fef9c3', color: '#854d0e' }}>밸런스</span>
-          카테고리
+          <span className="text-[8px] px-0.5 rounded font-semibold" style={{ backgroundColor: '#fef9c3', color: '#854d0e' }}>{t['calendar.legend_category_sample'] ?? '밸런스'}</span>
+          {t['calendar.legend_category'] ?? '카테고리'}
         </span>
       </div>
     </div>

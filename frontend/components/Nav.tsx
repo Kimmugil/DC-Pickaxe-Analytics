@@ -49,8 +49,8 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
         <nav className="flex items-center gap-0.5 text-xs">
           {[
             { href: '/',         key: 'home',     label: t['nav.home']     ?? '홈' },
-            { href: '/reports',  key: 'reports',  label: t['nav.reports']  ?? '종합 리포트' },
-            { href: '/daily',    key: 'daily',    label: t['nav.daily']    ?? '갤러리별 리포트' },
+            { href: '/gallery',  key: 'gallery',  label: t['nav.gallery']  ?? '갤러리별 리포트' },
+            { href: '/daily',    key: 'daily',    label: t['nav.daily']    ?? '일별 리포트' },
             { href: '/timeline', key: 'timeline', label: t['nav.timeline'] ?? '타임라인' },
           ].map(item => (
             <Link

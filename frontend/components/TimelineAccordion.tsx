@@ -41,7 +41,7 @@ function FullIssueCard({ issue }: { issue: DailyIssue }) {
   const cs = issue.category_scores
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 w-80 shrink-0 space-y-2.5">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 w-full space-y-2.5">
       {/* 헤더 */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
@@ -201,7 +201,13 @@ function IssueAccordionItem({
           <div className="mt-2 overflow-x-auto pb-2">
             <div className="flex gap-3" style={{ minWidth: `${Math.max(item.issues.length * 300, 100)}px` }}>
               {item.issues.map(issue => (
-                <FullIssueCard key={issue.gallery_id} issue={issue} />
+                <Link
+                  key={issue.gallery_id}
+                  href={`/gallery/${issue.gallery_id}#issue-${item.date}`}
+                  className="block w-80 shrink-0 hover:opacity-90 transition-opacity"
+                >
+                  <FullIssueCard issue={issue} />
+                </Link>
               ))}
             </div>
           </div>

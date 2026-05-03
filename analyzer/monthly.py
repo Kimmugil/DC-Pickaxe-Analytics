@@ -64,6 +64,37 @@ def _aggregate_gallery(rows: list[dict]) -> dict:
     causes = [str(r.get("issue_cause", "")).strip() for r in issue_rows if r.get("issue_cause")]
     top_cause = Counter(causes).most_common(1)[0][0] if causes else ""
 
+    # total_posts: 전체 일 합산
+    total_posts = sum(int(r.get("posts_total", 0) or 0) for r in rows)
+
+    # daily_counts: 날짜별 게시글 수
+    daily_counts: dict[str, int] = {}
+    for r in rows:
+        d = str(r.get("date", "")).strip()
+        if d:
+            daily_counts[d] = int(r.get("posts_total", 0) or 0)
+
+    # top_posts: 이슈 기간 상위 게시글 (댓글+추천 기준 상위 10개, 중복 제목 제거)
+    top_posts_all: list[dict] = []
+    seen_titles: set[str] = set()
+    for r in sorted(issue_rows, key=lambda x: int(x.get("issue_score", 0) or 0), reverse=True):
+        tops = _parse_json_field(r.get("top_posts"))
+        if not isinstance(tops, list):
+            continue
+        for p in tops:
+            if not isinstance(p, dict):
+                continue
+            title = str(p.get("제목", "")).strip()
+            if title and title not in seen_titles:
+                seen_titles.add(title)
+                top_posts_all.append(p)
+    # 댓글+추천 기준 정렬
+    top_posts_all.sort(
+        key=lambda p: int(p.get("댓글수", 0) or 0) + int(p.get("추천수", 0) or 0),
+        reverse=True,
+    )
+    top_posts = top_posts_all[:10]
+
     # keywords 합산
     kw_counter: Counter = Counter()
     for r in rows:
@@ -127,6 +158,9 @@ def _aggregate_gallery(rows: list[dict]) -> dict:
         "total_issue_score":    total_issue_score,
         "max_issue_score":      max_issue_score,
         "top_cause":            top_cause,
+        "total_posts":          total_posts,
+        "daily_counts":         daily_counts,
+        "top_posts":            top_posts,
         "keywords":             keywords,
         "headlines":            headlines,
         "category_scores_agg":  cat_agg,
@@ -186,6 +220,9 @@ def run(month: str | None = None, verbose: bool = True, dry_run: bool = False) -
             "total_issue_score":    agg["total_issue_score"],
             "max_issue_score":      agg["max_issue_score"],
             "top_cause":            agg["top_cause"],
+            "total_posts":          agg["total_posts"],
+            "daily_counts":         agg["daily_counts"],
+            "top_posts":            agg["top_posts"],
             "keywords":             agg["keywords"],
             "headlines":            agg["headlines"],
             "_category_scores_agg": agg["category_scores_agg"],

@@ -101,6 +101,9 @@ export interface MonthlyGallery {
   total_issue_score: number
   max_issue_score: number
   top_cause: string
+  total_posts?: number
+  daily_counts?: Record<string, number> | null
+  top_posts?: TopPost[] | null
   keywords: [string, number][] | null
   headlines: string[] | null
   ai_summary: string

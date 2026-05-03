@@ -181,10 +181,9 @@ function matchesCategory(g: WeeklyGallery, catKey: string): boolean {
   const cs = g.category_scores
   if (cs && Object.keys(cs).length > 0) {
     const entry = cs[catKey as keyof typeof cs]
-    if (entry && entry.score > 0) return true
-  } else {
-    if (!g.top_cause || g.top_cause === '기타') return true
+    return !!(entry && entry.score > 0)
   }
+  if (!g.top_cause || g.top_cause === '기타') return false
   return normalizeCause(g.top_cause) === CATEGORY_LABEL[catKey]
 }
 

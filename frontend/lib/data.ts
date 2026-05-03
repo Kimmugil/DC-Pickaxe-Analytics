@@ -3,7 +3,7 @@
  * Google Sheets raw 데이터를 파싱해 타입이 맞는 객체로 변환.
  */
 
-import type { DailyIssue, WeeklyGallery, WeeklyData, MonthlyGallery, MonthlyOverall } from '@/types'
+import type { DailyIssue, WeeklyGallery, WeeklyData, MonthlyGallery, MonthlyOverall, TopPost } from '@/types'
 import { getDailyIssuesRaw, getWeeklyGalleriesRaw, getWeeklyOverallRaw, getMonthlyIssuesRaw, getMonthlyOverallRaw } from './sheets'
 
 export type TimelineItem =
@@ -407,10 +407,12 @@ export async function getGalleryHistory(galleryId: string): Promise<{
   gallery_name: string
   issues: DailyIssue[]
   weeklies: WeeklyGallery[]
+  monthlies: MonthlyGallery[]
 }> {
-  const [dailyRows, weeklyRows] = await Promise.all([
+  const [dailyRows, weeklyRows, monthlyRows] = await Promise.all([
     getDailyIssuesRaw(),
     getWeeklyGalleriesRaw(),
+    getMonthlyIssuesRaw().catch(() => []),
   ])
 
   const myDaily = dailyRows.filter(r => r.gallery_id === galleryId)
@@ -436,7 +438,48 @@ export async function getGalleryHistory(galleryId: string): Promise<{
     .map(toWeekly)
     .sort((a, b) => b.week_start.localeCompare(a.week_start))
 
-  return { gallery_name, issues, weeklies }
+  // 월간 데이터 (month 기준 최신 run)
+  const monthMap = new Map<string, Record<string, string>>()
+  for (const r of monthlyRows.filter(r => r.gallery_id === galleryId)) {
+    const existing = monthMap.get(r.month)
+    if (!existing || (r.run_id ?? '') > (existing.run_id ?? '')) {
+      monthMap.set(r.month, r)
+    }
+  }
+  const monthlies = Array.from(monthMap.values())
+    .map(toMonthlyGallery)
+    .sort((a, b) => b.month.localeCompare(a.month))
+
+  return { gallery_name, issues, weeklies, monthlies }
+}
+
+export async function getGalleryCalendarData(galleryId: string) {
+  const [daily, weekly] = await Promise.all([
+    getDailyIssuesRaw(),
+    getWeeklyGalleriesRaw(),
+  ])
+
+  const issuesByDate: Record<string, { id: string; name: string; score: number; cause?: string }[]> = {}
+  for (const r of daily) {
+    if (r.gallery_id !== galleryId) continue
+    if (!r.date || !parseBool(r.has_issue)) continue
+    if (!issuesByDate[r.date]) issuesByDate[r.date] = []
+    issuesByDate[r.date].push({
+      id:    r.gallery_id ?? '',
+      name:  r.gallery_name ?? '',
+      score: Math.round(parseNum(r.issue_score)),
+      cause: r.issue_cause || undefined,
+    })
+  }
+
+  const weeklyDates = [...new Set(
+    weekly
+      .filter(r => r.gallery_id === galleryId)
+      .map(r => r.week_start)
+      .filter(Boolean),
+  )].sort((a, b) => b.localeCompare(a))
+
+  return { issuesByDate, weeklyDates }
 }
 
 export async function getWeeklyByWeek(weekStart: string): Promise<WeeklyData> {
@@ -490,6 +533,9 @@ function toMonthlyGallery(r: Record<string, string>): MonthlyGallery {
     total_issue_score: Math.round(parseNum(r.total_issue_score)),
     max_issue_score:   Math.round(parseNum(r.max_issue_score)),
     top_cause:         r.top_cause ?? '',
+    total_posts:       r.total_posts ? Math.round(parseNum(r.total_posts)) : undefined,
+    daily_counts:      r.daily_counts ? parseField(r.daily_counts) as MonthlyGallery['daily_counts'] : undefined,
+    top_posts:         r.top_posts ? parseField(r.top_posts) as TopPost[] | null : undefined,
     keywords:          parseField(r.keywords) as MonthlyGallery['keywords'],
     headlines:         parseField(r.headlines) as MonthlyGallery['headlines'],
     ai_summary:        r.ai_summary ?? '',

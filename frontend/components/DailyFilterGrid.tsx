@@ -26,14 +26,13 @@ function fmtDate(d: string) {
 function matchesCategory(issue: DailyIssue, catKey: string): boolean {
   if (catKey === 'all') return true
   const cs = issue.category_scores
-  // {} (빈 객체) 는 구버전 데이터로 취급 — Object.keys 로 실제 데이터 유무 구분
   if (cs && Object.keys(cs).length > 0) {
+    // v2 데이터: category_scores 기준으로만 판단 (score 0이면 해당 카테고리 아님)
     const entry = cs[catKey as keyof typeof cs]
-    if (entry && entry.score > 0) return true
-  } else {
-    // 구버전 데이터: issue_cause 없으면 전체 카테고리에 표시
-    if (!issue.issue_cause || issue.issue_cause === '기타') return true
+    return !!(entry && entry.score > 0)
   }
+  // 구버전/미분류 데이터: issue_cause 기준, 없으면 전체 필터에서만 표시
+  if (!issue.issue_cause || issue.issue_cause === '기타') return false
   return normalizeCause(issue.issue_cause) === CATEGORY_LABEL[catKey]
 }
 

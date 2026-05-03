@@ -41,7 +41,8 @@ _HEADERS = {
     "monthly_issues": [
         "month", "run_id", "gallery_id", "gallery_name",
         "issue_days", "total_issue_score", "max_issue_score",
-        "top_cause", "keywords", "headlines", "ai_summary",
+        "top_cause", "total_posts", "daily_counts", "top_posts",
+        "keywords", "headlines", "ai_summary",
         # v2: 구조화 분석 필드
         "headline", "category_scores", "major_issues",
         "sentiment_positive", "sentiment_negative",
@@ -386,6 +387,9 @@ def _build_monthly_row(r: dict, month: str, run_id: str, total_cols: int) -> lis
         r.get("total_issue_score", 0),
         r.get("max_issue_score", 0),
         r.get("top_cause", ""),
+        r.get("total_posts", 0),
+        json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
+        json.dumps(r.get("top_posts", []), ensure_ascii=False),
         json.dumps(r.get("keywords", []), ensure_ascii=False),
         json.dumps(r.get("headlines", []), ensure_ascii=False),
         r.get("ai_summary", ""),

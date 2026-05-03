@@ -19,11 +19,9 @@ function matchesCategory(issue: DailyIssue, catKey: string): boolean {
   const cs = issue.category_scores
   if (cs && Object.keys(cs).length > 0) {
     const entry = cs[catKey as keyof typeof cs]
-    if (entry && entry.score > 0) return true
-  } else {
-    // 구버전 데이터: issue_cause 없으면 전체 카테고리에 표시
-    if (!issue.issue_cause || issue.issue_cause === '기타') return true
+    return !!(entry && entry.score > 0)
   }
+  if (!issue.issue_cause || issue.issue_cause === '기타') return false
   return normalizeCause(issue.issue_cause) === CATEGORY_LABEL[catKey]
 }
 
