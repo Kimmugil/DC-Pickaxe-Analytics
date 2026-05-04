@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { TimelineItem } from '@/lib/data'
 import type { DailyIssue } from '@/types'
@@ -157,7 +157,7 @@ function IssueAccordionItem({
 }) {
   const isHigh = item.max_score >= 7
   return (
-    <div className="flex gap-3">
+    <div id={`i-${item.date}`} className="flex gap-3 scroll-mt-16">
       <div className="flex flex-col items-center shrink-0">
         <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${isHigh ? 'bg-red-500' : 'bg-orange-400'}`} />
         <div className="w-px flex-1 bg-gray-200 mt-1" />
@@ -226,7 +226,7 @@ function WeeklyAccordionItem({
   t: Record<string, string>
 }) {
   return (
-    <div className="flex gap-3">
+    <div id={`w-${item.date}`} className="flex gap-3 scroll-mt-16">
       <div className="flex flex-col items-center shrink-0">
         <div className="w-3 h-3 rounded-full mt-1.5 bg-blue-300 shrink-0" />
         <div className="w-px flex-1 bg-gray-200 mt-1" />
@@ -272,6 +272,18 @@ function WeeklyAccordionItem({
 
 export function TimelineAccordion({ items, t }: { items: TimelineItem[]; t: Record<string, string> }) {
   const [openKeys, setOpenKeys] = useState<Set<string>>(new Set())
+
+  // 페이지 로드 시 URL 해시로 해당 항목 스크롤
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash) return
+    const tryScroll = () => {
+      const el = document.querySelector(hash)
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true }
+      return false
+    }
+    if (!tryScroll()) setTimeout(tryScroll, 300)
+  }, [])
 
   function toggle(key: string) {
     setOpenKeys(prev => {

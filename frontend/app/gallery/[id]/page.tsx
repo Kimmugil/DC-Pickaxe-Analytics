@@ -57,6 +57,7 @@ export default async function GalleryDetailPage({ params }: Props) {
             issuesByDate={calData.issuesByDate}
             weeklyDates={calData.weeklyDates}
             t={t}
+            galleryId={id}
           />
         </section>
 

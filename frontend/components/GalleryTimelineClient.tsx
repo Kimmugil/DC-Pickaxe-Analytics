@@ -186,15 +186,18 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
 // ── 월간 카드 ─────────────────────────────────────────────────────────
 
 function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, string> }) {
-  const kws = Array.isArray(m.keywords) ? m.keywords : []
-  const mis = Array.isArray(m.major_issues) ? m.major_issues : []
-  const tops = Array.isArray(m.top_posts) ? m.top_posts : []
+  const kws  = Array.isArray(m.keywords)     ? m.keywords     : []
+  const mis  = Array.isArray(m.major_issues) ? m.major_issues : []
+  const tops = Array.isArray(m.top_posts)    ? m.top_posts    : []
+  // category_scores가 JSON 문자열이면 파싱 시도
+  const csRaw = m.category_scores
+  const cs = (csRaw && typeof csRaw === 'object') ? csRaw : undefined
   const hasCounts = m.daily_counts && Object.keys(m.daily_counts).length > 0
-  const hasAI = m.ai_summary && m.ai_summary !== '(이슈 없음 — AI 요약 제외)'
+  // 컬럼 순서 불일치로 ai_summary에 JSON 배열/객체가 들어온 경우 렌더링 건너뜀
+  const aiSummaryClean = m.ai_summary && !m.ai_summary.trimStart().startsWith('[') && !m.ai_summary.trimStart().startsWith('{')
+  const hasAI = aiSummaryClean && m.ai_summary !== '(이슈 없음 — AI 요약 제외)'
   const causeLabel = m.top_cause ? normalizeCause(m.top_cause) : null
   const causeStyle = causeLabel && causeLabel !== '기타' ? CAUSE_STYLE[causeLabel] : null
-  const cs = m.category_scores
-
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center shrink-0">
@@ -277,23 +280,30 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
           </div>
         )}
 
-        {/* 감성 */}
-        {(m.sentiment?.positive || m.sentiment?.negative) && (
-          <div className="grid grid-cols-2 gap-2">
-            {m.sentiment.positive && (
-              <div className="bg-green-50 rounded p-2">
-                <p className="text-[10px] text-green-600 font-medium mb-0.5">{t['common.sentiment_positive'] ?? '긍정'}</p>
-                <p className="text-xs text-green-800 leading-snug">{m.sentiment.positive}</p>
-              </div>
-            )}
-            {m.sentiment.negative && (
-              <div className="bg-red-50 rounded p-2">
-                <p className="text-[10px] text-red-500 font-medium mb-0.5">{t['common.sentiment_negative'] ?? '부정'}</p>
-                <p className="text-xs text-red-800 leading-snug">{m.sentiment.negative}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* 감성 (JSON 문자열로 오염된 경우 렌더링 제외) */}
+        {(m.sentiment?.positive || m.sentiment?.negative) && (() => {
+          const pos = m.sentiment!.positive
+          const neg = m.sentiment!.negative
+          const posClean = pos && !pos.trimStart().startsWith('{') && !pos.trimStart().startsWith('[')
+          const negClean = neg && !neg.trimStart().startsWith('{') && !neg.trimStart().startsWith('[')
+          if (!posClean && !negClean) return null
+          return (
+            <div className="grid grid-cols-2 gap-2">
+              {posClean && (
+                <div className="bg-green-50 rounded p-2">
+                  <p className="text-[10px] text-green-600 font-medium mb-0.5">{t['common.sentiment_positive'] ?? '긍정'}</p>
+                  <p className="text-xs text-green-800 leading-snug">{pos}</p>
+                </div>
+              )}
+              {negClean && (
+                <div className="bg-red-50 rounded p-2">
+                  <p className="text-[10px] text-red-500 font-medium mb-0.5">{t['common.sentiment_negative'] ?? '부정'}</p>
+                  <p className="text-xs text-red-800 leading-snug">{neg}</p>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* 키워드 */}
         {kws.length > 0 && (

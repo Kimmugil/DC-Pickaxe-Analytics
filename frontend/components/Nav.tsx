@@ -50,7 +50,6 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
           {[
             { href: '/',         key: 'home',     label: t['nav.home']     ?? '홈' },
             { href: '/gallery',  key: 'gallery',  label: t['nav.gallery']  ?? '갤러리별 리포트' },
-            { href: '/daily',    key: 'daily',    label: t['nav.daily']    ?? '일별 리포트' },
             { href: '/timeline', key: 'timeline', label: t['nav.timeline'] ?? '타임라인' },
           ].map(item => (
             <Link

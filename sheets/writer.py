@@ -363,7 +363,8 @@ def upsert_monthly_issues(results: list[dict], month: str, run_id: str) -> None:
     update_batch: list[tuple[int, list]] = []
 
     for r in results:
-        row_data = _build_monthly_row(r, month, run_id, len(headers))
+        # 헤더 목록을 전달해 컬럼명 기반으로 데이터 위치 결정 (컬럼 순서 불일치 방지)
+        row_data = _build_monthly_row(r, month, run_id, headers)
         key = (month, r.get("gallery_id", ""))
         if key in row_map:
             update_batch.append((row_map[key], row_data))
@@ -379,30 +380,34 @@ def upsert_monthly_issues(results: list[dict], month: str, run_id: str) -> None:
     print(f"  [monthly_issues] upsert: {len(update_batch)}행 업데이트 / {len(new_rows)}행 신규 추가", flush=True)
 
 
-def _build_monthly_row(r: dict, month: str, run_id: str, total_cols: int) -> list:
-    base = [
-        month, run_id,
-        r.get("gallery_id", ""), r.get("gallery_name", ""),
-        r.get("issue_days", 0),
-        r.get("total_issue_score", 0),
-        r.get("max_issue_score", 0),
-        r.get("top_cause", ""),
-        r.get("total_posts", 0),
-        json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
-        json.dumps(r.get("top_posts", []), ensure_ascii=False),
-        json.dumps(r.get("keywords", []), ensure_ascii=False),
-        json.dumps(r.get("headlines", []), ensure_ascii=False),
-        r.get("ai_summary", ""),
-        # v2
-        r.get("headline", ""),
-        json.dumps(r.get("category_scores", {}), ensure_ascii=False),
-        json.dumps(r.get("major_issues", []), ensure_ascii=False),
-        r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
-        r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
-    ]
-    while len(base) < total_cols:
-        base.append("")
-    return base
+def _build_monthly_row(r: dict, month: str, run_id: str, headers: list[str]) -> list:
+    """
+    monthly_issues 헤더 목록에 맞는 행 데이터를 컬럼명 기반으로 반환합니다.
+    컬럼 순서가 달라도 올바른 열에 데이터가 기록됩니다.
+    """
+    sentiment = r.get("sentiment", {})
+    data_map: dict[str, object] = {
+        "month":              month,
+        "run_id":             run_id,
+        "gallery_id":         r.get("gallery_id", ""),
+        "gallery_name":       r.get("gallery_name", ""),
+        "issue_days":         r.get("issue_days", 0),
+        "total_issue_score":  r.get("total_issue_score", 0),
+        "max_issue_score":    r.get("max_issue_score", 0),
+        "top_cause":          r.get("top_cause", ""),
+        "total_posts":        r.get("total_posts", 0),
+        "daily_counts":       json.dumps(r.get("daily_counts", {}), ensure_ascii=False),
+        "top_posts":          json.dumps(r.get("top_posts", []),    ensure_ascii=False),
+        "keywords":           json.dumps(r.get("keywords", []),     ensure_ascii=False),
+        "headlines":          json.dumps(r.get("headlines", []),    ensure_ascii=False),
+        "ai_summary":         r.get("ai_summary", ""),
+        "headline":           r.get("headline", ""),
+        "category_scores":    json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+        "major_issues":       json.dumps(r.get("major_issues", []),    ensure_ascii=False),
+        "sentiment_positive": sentiment.get("positive", "") if isinstance(sentiment, dict) else "",
+        "sentiment_negative": sentiment.get("negative", "") if isinstance(sentiment, dict) else "",
+    }
+    return [data_map.get(h, "") for h in headers]
 
 
 # ── 월간 종합 요약 upsert ─────────────────────────────────────────────

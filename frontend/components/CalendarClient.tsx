@@ -15,6 +15,8 @@ interface Props {
   issuesByDate: Record<string, GalleryEntry[]>
   weeklyDates: string[]
   t?: Record<string, string>
+  /** 갤러리 상세 페이지에서 사용 시 설정 — 주간 이벤트를 페이지 내 앵커로 연결 */
+  galleryId?: string
 }
 
 function toDateStr(d: Date) {
@@ -40,7 +42,7 @@ function CauseBadge({ cause }: { cause?: string }) {
   )
 }
 
-export function CalendarClient({ issuesByDate, weeklyDates, t = {} }: Props) {
+export function CalendarClient({ issuesByDate, weeklyDates, t = {}, galleryId }: Props) {
   const now = new Date()
   const todayStr = toDateStr(now)
   const curYear  = now.getUTCFullYear()
@@ -137,13 +139,22 @@ export function CalendarClient({ issuesByDate, weeklyDates, t = {} }: Props) {
 
                 {/* 주간 리포트 이벤트 바 */}
                 {hasWeekly && (
-                  <Link
-                    href={`/weekly/${dateStr}`}
-                    className="block w-full text-left text-[9px] leading-tight px-1 py-0.5 rounded-sm mb-0.5 font-semibold truncate"
-                    style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}
-                  >
-                    {t['calendar.weekly_label'] ?? '주간 리포트'}
-                  </Link>
+                  galleryId ? (
+                    <a
+                      href={`#weekly-${dateStr}`}
+                      className="block w-full text-left text-[9px] leading-tight px-1 py-0.5 rounded-sm mb-0.5 font-semibold truncate"
+                      style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}
+                    >
+                      {t['calendar.weekly_label'] ?? '주간 리포트'}
+                    </a>
+                  ) : (
+                    <div
+                      className="block w-full text-left text-[9px] leading-tight px-1 py-0.5 rounded-sm mb-0.5 font-semibold truncate"
+                      style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}
+                    >
+                      {t['calendar.weekly_label'] ?? '주간 리포트'}
+                    </div>
+                  )
                 )}
 
                 {/* 갤러리 이슈 배지 — 개별 클릭 */}
