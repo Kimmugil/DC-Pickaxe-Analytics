@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import type { DailyIssue } from '@/types'
 import { CATEGORY_ORDER, CATEGORY_LABEL, CAUSE_STYLE, normalizeCause } from '@/lib/issueCategories'
 import { tp } from '@/lib/textUtils'
@@ -43,9 +44,13 @@ interface IssueCardFullProps {
   headerLeft?: React.ReactNode
   /** 통계 우측 표시 여부 (기본 true) */
   showStats?: boolean
+  /** 토글 접기 모드 — 헤드라인·AI요약까지만 기본 표시, 상세는 버튼으로 펼침 */
+  collapsible?: boolean
 }
 
-export function IssueCardFull({ issue, t, headerLeft, showStats = true }: IssueCardFullProps) {
+export function IssueCardFull({ issue, t, headerLeft, showStats = true, collapsible = false }: IssueCardFullProps) {
+  const [expanded, setExpanded] = useState(!collapsible)
+
   const kws    = Array.isArray(issue.keywords)     ? issue.keywords     : []
   const tops   = Array.isArray(issue.top_posts)    ? issue.top_posts    : []
   const majors = Array.isArray(issue.major_issues) ? issue.major_issues : []
@@ -56,6 +61,15 @@ export function IssueCardFull({ issue, t, headerLeft, showStats = true }: IssueC
 
   const base = Math.max(issue.avg_same_weekday ?? 0, issue.avg_7d)
   const pct  = base > 0 ? ((issue.posts_total - base) / base) * 100 : 0
+
+  const hasDetails = !!(
+    issue.category_scores ||
+    majors.length > 0 ||
+    issue.sentiment?.positive ||
+    issue.sentiment?.negative ||
+    kws.length > 0 ||
+    tops.length > 0
+  )
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
@@ -116,75 +130,91 @@ export function IssueCardFull({ issue, t, headerLeft, showStats = true }: IssueC
         <p className="text-sm text-gray-600 leading-relaxed">{issue.ai_summary}</p>
       )}
 
-      {/* 카테고리 점수 바 */}
-      {issue.category_scores && (
-        <div className="pt-1 border-t border-gray-100">
-          <CategoryBar scores={issue.category_scores} />
-        </div>
+      {/* 토글 버튼 (collapsible 모드에서 상세 내용 있을 때) */}
+      {collapsible && hasDetails && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1 pt-1 border-t border-gray-100 w-full"
+        >
+          <span>{expanded ? (t['common.collapse'] ?? '접기') : (t['common.expand'] ?? '더 보기')}</span>
+          <span className={`transition-transform ${expanded ? 'rotate-180' : ''}`}>▾</span>
+        </button>
       )}
 
-      {/* 주요 이슈 */}
-      {majors.length > 0 && (
-        <div className="space-y-2.5 pt-2 border-t border-gray-100">
-          {majors.map((m, i) => (
-            <div key={i} className="text-xs space-y-0.5">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-semibold text-gray-800">{m.title}</span>
-                {m.mention_count > 0 && (
-                  <span className="text-gray-400 tabular-nums">언급 {m.mention_count}건</span>
-                )}
-                {m.ref_url && (
-                  <a href={m.ref_url} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline">↗</a>
-                )}
-              </div>
-              {m.detail && <p className="text-gray-500 leading-relaxed">{m.detail}</p>}
+      {/* 상세 내용 (collapsible 모드에서는 expanded일 때만) */}
+      {(!collapsible || expanded) && (
+        <>
+          {/* 카테고리 점수 바 */}
+          {issue.category_scores && (
+            <div className="pt-1 border-t border-gray-100">
+              <CategoryBar scores={issue.category_scores} />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* 감정 분위기 */}
-      {(issue.sentiment?.positive || issue.sentiment?.negative) && (
-        <div className="flex flex-col gap-1 pt-2 border-t border-gray-100 text-xs">
-          {issue.sentiment.positive && (
-            <p className="text-green-700">
-              <span className="font-medium">긍정</span> {issue.sentiment.positive}
-            </p>
           )}
-          {issue.sentiment.negative && (
-            <p className="text-red-600">
-              <span className="font-medium">부정</span> {issue.sentiment.negative}
-            </p>
-          )}
-        </div>
-      )}
 
-      {/* 키워드 */}
-      {kws.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {kws.slice(0, 8).map(([kw, cnt]) => (
-            <span key={kw} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-              #{kw} <span className="text-gray-400 tabular-nums">{cnt}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* 상위 게시글 (major_issues 없을 때만) */}
-      {majors.length === 0 && tops.length > 0 && (
-        <div className="space-y-1 pt-2 border-t border-gray-100">
-          {tops.slice(0, 3).map((p, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
-              <span className="text-gray-300 w-3 tabular-nums shrink-0">{i + 1}</span>
-              <a href={p.링크} target="_blank" rel="noopener noreferrer"
-                className="text-gray-700 hover:underline line-clamp-1 flex-1">
-                {p.제목}
-              </a>
-              <span className="text-gray-400 tabular-nums shrink-0">댓글 {p.댓글수}</span>
+          {/* 주요 이슈 */}
+          {majors.length > 0 && (
+            <div className="space-y-2.5 pt-2 border-t border-gray-100">
+              {majors.map((m, i) => (
+                <div key={i} className="text-xs space-y-0.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-gray-800">{m.title}</span>
+                    {m.mention_count > 0 && (
+                      <span className="text-gray-400 tabular-nums">언급 {m.mention_count}건</span>
+                    )}
+                    {m.ref_url && (
+                      <a href={m.ref_url} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline">↗</a>
+                    )}
+                  </div>
+                  {m.detail && <p className="text-gray-500 leading-relaxed">{m.detail}</p>}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* 감정 분위기 */}
+          {(issue.sentiment?.positive || issue.sentiment?.negative) && (
+            <div className="flex flex-col gap-1 pt-2 border-t border-gray-100 text-xs">
+              {issue.sentiment.positive && (
+                <p className="text-green-700">
+                  <span className="font-medium">긍정</span> {issue.sentiment.positive}
+                </p>
+              )}
+              {issue.sentiment.negative && (
+                <p className="text-red-600">
+                  <span className="font-medium">부정</span> {issue.sentiment.negative}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 키워드 */}
+          {kws.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {kws.slice(0, 8).map(([kw, cnt]) => (
+                <span key={kw} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                  #{kw} <span className="text-gray-400 tabular-nums">{cnt}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* 상위 게시글 (major_issues 없을 때만) */}
+          {majors.length === 0 && tops.length > 0 && (
+            <div className="space-y-1 pt-2 border-t border-gray-100">
+              {tops.slice(0, 3).map((p, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className="text-gray-300 w-3 tabular-nums shrink-0">{i + 1}</span>
+                  <a href={p.링크} target="_blank" rel="noopener noreferrer"
+                    className="text-gray-700 hover:underline line-clamp-1 flex-1">
+                    {p.제목}
+                  </a>
+                  <span className="text-gray-400 tabular-nums shrink-0">댓글 {p.댓글수}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

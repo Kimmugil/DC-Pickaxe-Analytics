@@ -105,12 +105,13 @@ export function DailyFilterGrid({ dateGroups, galleries, t }: Props) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-3">
             {issues.map(issue => (
               <IssueCardFull
                 key={`${issue.date}-${issue.gallery_id}`}
                 issue={issue}
                 t={t}
+                collapsible={true}
                 headerLeft={
                   <Link
                     href={`/gallery/${issue.gallery_id}`}

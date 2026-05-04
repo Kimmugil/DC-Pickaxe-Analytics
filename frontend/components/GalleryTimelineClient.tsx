@@ -56,7 +56,7 @@ function CategoryBar({ cs }: { cs?: WeeklyGallery['category_scores'] }) {
             style={{ backgroundColor: style.bg, color: style.text }}
             title={entry.summary || undefined}
           >
-            {label} {'·'.repeat(entry.score)}
+            {label}
           </span>
         )
       })}
@@ -70,8 +70,6 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
   const mis  = Array.isArray(w.major_issues) ? w.major_issues : []
   const hasCounts = w.daily_counts && Object.keys(w.daily_counts).length > 0
   const hasAI = w.ai_summary && w.ai_summary !== '(주간 게시글 10건 미만 — AI 요약 제외)'
-  const causeLabel = w.top_cause ? normalizeCause(w.top_cause) : null
-  const causeStyle = causeLabel && causeLabel !== '기타' ? CAUSE_STYLE[causeLabel] : null
 
   return (
     <div className="flex gap-4">
@@ -92,12 +90,6 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className="text-xs text-blue-400 tabular-nums">{w.total_posts}건</span>
-            {causeStyle && causeLabel && (
-              <span className="text-[10px] px-1 py-0.5 rounded font-medium"
-                style={{ backgroundColor: causeStyle.bg, color: causeStyle.text }}>
-                {causeLabel}
-              </span>
-            )}
           </div>
         </div>
 
@@ -196,8 +188,6 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
   // 컬럼 순서 불일치로 ai_summary에 JSON 배열/객체가 들어온 경우 렌더링 건너뜀
   const aiSummaryClean = m.ai_summary && !m.ai_summary.trimStart().startsWith('[') && !m.ai_summary.trimStart().startsWith('{')
   const hasAI = aiSummaryClean && m.ai_summary !== '(이슈 없음 — AI 요약 제외)'
-  const causeLabel = m.top_cause ? normalizeCause(m.top_cause) : null
-  const causeStyle = causeLabel && causeLabel !== '기타' ? CAUSE_STYLE[causeLabel] : null
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center shrink-0">
@@ -220,14 +210,6 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
               <span className="text-xs text-purple-400 tabular-nums">{m.total_posts}건</span>
             )}
             <span className="text-xs text-purple-500 tabular-nums">이슈 {m.issue_days}일</span>
-            {causeStyle && causeLabel && (
-              <span
-                className="text-[10px] px-1 py-0.5 rounded font-medium"
-                style={{ backgroundColor: causeStyle.bg, color: causeStyle.text }}
-              >
-                {causeLabel}
-              </span>
-            )}
           </div>
         </div>
 
@@ -247,7 +229,7 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
                   style={{ backgroundColor: style.bg, color: style.text }}
                   title={entry.summary || undefined}
                 >
-                  {label} {'·'.repeat(entry.score)}
+                  {label}
                 </span>
               )
             })}
@@ -317,10 +299,10 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
         )}
 
         {/* TOP 게시글 */}
-        {mis.length === 0 && tops.length > 0 && (
+        {tops.length > 0 && (
           <div className="space-y-1 pt-1 border-t border-purple-100">
             <p className="text-xs text-purple-400 font-medium mb-1">{t['common.top_posts'] ?? '인기 게시글'} TOP {tops.length}</p>
-            {tops.slice(0, 5).map((p, i) => (
+            {tops.slice(0, 10).map((p, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
                 <span className="text-gray-300 w-4 shrink-0 tabular-nums mt-0.5">{i + 1}</span>
                 <div className="min-w-0 flex-1">

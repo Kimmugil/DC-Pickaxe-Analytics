@@ -16,7 +16,7 @@ export async function GalleryFloatingNav() {
   if (!list.length) return null
 
   return (
-    <div className="fixed right-3 top-4 z-20 w-56 hidden xl:block pointer-events-none">
+    <div className="fixed right-3 top-1/2 -translate-y-1/2 z-20 w-64 hidden xl:block pointer-events-none">
       <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-md pointer-events-auto flex flex-col"
         style={{ maxHeight: 'calc(100vh - 5rem)' }}>
 

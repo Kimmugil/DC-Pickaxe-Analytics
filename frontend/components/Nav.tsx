@@ -5,7 +5,7 @@ interface NavProps {
   back?: { href: string; label?: string }
   title?: string
   subtitle?: string
-  active?: 'home' | 'reports' | 'daily' | 'gallery' | 'timeline' | 'admin'
+  active?: 'home' | 'reports' | 'gallery' | 'timeline' | 'admin'
 }
 
 export async function Nav({ back, title, subtitle, active }: NavProps) {
@@ -48,9 +48,9 @@ export async function Nav({ back, title, subtitle, active }: NavProps) {
 
         <nav className="flex items-center gap-0.5 text-xs">
           {[
-            { href: '/',         key: 'home',     label: t['nav.home']     ?? '홈' },
-            { href: '/gallery',  key: 'gallery',  label: t['nav.gallery']  ?? '갤러리별 리포트' },
-            { href: '/timeline', key: 'timeline', label: t['nav.timeline'] ?? '타임라인' },
+            { href: '/',       key: 'home',     label: t['nav.home']     ?? '홈' },
+            { href: '/gallery', key: 'gallery',  label: t['nav.gallery']  ?? '갤러리별 리포트' },
+            { href: '/daily',   key: 'timeline', label: t['nav.timeline'] ?? '이슈 목록' },
           ].map(item => (
             <Link
               key={item.key}

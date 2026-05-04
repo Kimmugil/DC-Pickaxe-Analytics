@@ -46,12 +46,13 @@ export default async function HomePage() {
                 {t['common.view_all'] ?? '전체 보기 →'}
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="space-y-3">
               {recentIssues.map(issue => (
                 <IssueCardFull
                   key={`${issue.date}-${issue.gallery_id}`}
                   issue={issue}
                   t={t}
+                  collapsible={true}
                   headerLeft={
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link href={`/gallery/${issue.gallery_id}`} className="text-sm font-semibold text-gray-900 hover:underline">
