@@ -336,7 +336,6 @@ function MonthlyEntryCard({ m, t }: { m: MonthlyGallery; t: Record<string, strin
 
 export function GalleryTimelineClient({ timeline, t }: Props) {
   const [typeFilter, setTypeFilter] = useState<'all' | 'issue' | 'weekly' | 'monthly'>('all')
-  const [catFilter, setCatFilter] = useState('all')
 
   // 해시 앵커 스크롤
   useEffect(() => {
@@ -362,18 +361,6 @@ export function GalleryTimelineClient({ timeline, t }: Props) {
 
   const filtered = timeline.filter(entry => {
     if (typeFilter !== 'all' && entry.kind !== typeFilter) return false
-    if (entry.kind === 'issue') {
-      const d = entry.data as DailyIssue
-      return matchesCategory(catFilter, d.category_scores, d.issue_cause)
-    }
-    if (entry.kind === 'weekly') {
-      const w = entry.data as WeeklyGallery
-      return matchesCategory(catFilter, w.category_scores, w.top_cause)
-    }
-    if (entry.kind === 'monthly') {
-      const m = entry.data as MonthlyGallery
-      return matchesCategory(catFilter, m.category_scores, m.top_cause)
-    }
     return true
   })
 
@@ -387,23 +374,6 @@ export function GalleryTimelineClient({ timeline, t }: Props) {
             onClick={() => setTypeFilter(opt.key)}
             className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
               typeFilter === opt.key
-                ? 'bg-gray-800 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 카테고리 필터 */}
-      <div className="flex flex-wrap gap-1.5 mb-5">
-        {FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.key}
-            onClick={() => setCatFilter(opt.key)}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-              catFilter === opt.key
                 ? 'bg-gray-800 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
