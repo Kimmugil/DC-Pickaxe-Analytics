@@ -405,6 +405,7 @@ export function GalleryTimelineClient({ timeline, t }: Props) {
                   <IssueCardFull
                     issue={issue}
                     t={t}
+                    collapsible={true}
                     headerLeft={
                       <span className="text-sm font-semibold text-gray-900">
                         {fmtDate(issue.date)}

@@ -3,7 +3,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { DailyIssue } from '@/types'
 import { IssueCardFull } from '@/components/IssueCardFull'
-import { FILTER_OPTIONS, CATEGORY_LABEL, normalizeCause } from '@/lib/issueCategories'
 import { tp } from '@/lib/textUtils'
 
 interface DateGroup {
@@ -23,21 +22,7 @@ function fmtDate(d: string) {
   return `${y}년 ${m}월 ${day}일`
 }
 
-function matchesCategory(issue: DailyIssue, catKey: string): boolean {
-  if (catKey === 'all') return true
-  const cs = issue.category_scores
-  if (cs && Object.keys(cs).length > 0) {
-    // v2 데이터: category_scores 기준으로만 판단 (score 0이면 해당 카테고리 아님)
-    const entry = cs[catKey as keyof typeof cs]
-    return !!(entry && entry.score > 0)
-  }
-  // 구버전/미분류 데이터: issue_cause 기준, 없으면 전체 필터에서만 표시
-  if (!issue.issue_cause || issue.issue_cause === '기타') return false
-  return normalizeCause(issue.issue_cause) === CATEGORY_LABEL[catKey]
-}
-
 export function DailyFilterGrid({ dateGroups, galleries, t }: Props) {
-  const [catFilter, setCatFilter] = useState('all')
   const [galleryFilter, setGalleryFilter] = useState('all')
 
   const filtered = dateGroups
@@ -45,7 +30,7 @@ export function DailyFilterGrid({ dateGroups, galleries, t }: Props) {
       date,
       issues: issues.filter(issue => {
         if (galleryFilter !== 'all' && issue.gallery_id !== galleryFilter) return false
-        return matchesCategory(issue, catFilter)
+        return true
       }),
     }))
     .filter(g => g.issues.length > 0)
@@ -54,24 +39,6 @@ export function DailyFilterGrid({ dateGroups, galleries, t }: Props) {
     <div className="space-y-4">
       {/* 필터 바 */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-gray-200 rounded-lg px-4 py-3">
-        <div className="flex flex-wrap gap-1.5">
-          {FILTER_OPTIONS.map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => setCatFilter(opt.key)}
-              className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                catFilter === opt.key
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="w-px h-4 bg-gray-200 hidden sm:block" />
-
         <select
           value={galleryFilter}
           onChange={e => setGalleryFilter(e.target.value)}

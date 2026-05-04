@@ -365,16 +365,22 @@ export async function getGalleryList(): Promise<{
   name: string
   recent_issue_days: number
   latest_issue: { score: number; date: string } | null
+  max_score_4w: number
+  week_activity: [boolean, boolean, boolean, boolean]  // [이번주, 1주전, 2주전, 3주전]
 }[]> {
   const rows = await getDailyIssuesRaw()
 
-  const nameMap = new Map<string, string>()
+  const nameMap    = new Map<string, string>()
   const issueDates = new Map<string, Set<string>>()
   const latestIssue = new Map<string, { score: number; date: string }>()
+  const maxScore4w  = new Map<string, number>()
+  const issueDateSet = new Map<string, Set<string>>()
 
-  const cutoff = new Date()
-  cutoff.setUTCDate(cutoff.getUTCDate() - 28)
+  const now = new Date()
+  const cutoff = new Date(now)
+  cutoff.setUTCDate(now.getUTCDate() - 28)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
+  const todayStr  = now.toISOString().slice(0, 10)
 
   for (const r of rows) {
     if (!r.gallery_id) continue
@@ -383,6 +389,10 @@ export async function getGalleryList(): Promise<{
     if (r.date && r.date >= cutoffStr) {
       if (!issueDates.has(r.gallery_id)) issueDates.set(r.gallery_id, new Set())
       issueDates.get(r.gallery_id)!.add(r.date)
+      if (!issueDateSet.has(r.gallery_id)) issueDateSet.set(r.gallery_id, new Set())
+      issueDateSet.get(r.gallery_id)!.add(r.date)
+      const s = Math.round(parseNum(r.issue_score))
+      maxScore4w.set(r.gallery_id, Math.max(maxScore4w.get(r.gallery_id) ?? 0, s))
     }
     const existing = latestIssue.get(r.gallery_id)
     if (!existing || (r.date ?? '') > existing.date) {
@@ -394,12 +404,26 @@ export async function getGalleryList(): Promise<{
   }
 
   return Array.from(nameMap.entries())
-    .map(([id, name]) => ({
-      id,
-      name,
-      recent_issue_days: issueDates.get(id)?.size ?? 0,
-      latest_issue: latestIssue.get(id) ?? null,
-    }))
+    .map(([id, name]) => {
+      const dates = issueDateSet.get(id) ?? new Set<string>()
+      // 4주 활성 여부: [이번주, 1주전, 2주전, 3주전]
+      const week_activity: [boolean, boolean, boolean, boolean] = [0, 1, 2, 3].map(wk => {
+        const end = new Date(now); end.setUTCDate(now.getUTCDate() - wk * 7)
+        const start = new Date(end); start.setUTCDate(end.getUTCDate() - 6)
+        const es = end.toISOString().slice(0, 10)
+        const ss = start.toISOString().slice(0, 10)
+        return [...dates].some(d => d >= ss && d <= es)
+      }) as [boolean, boolean, boolean, boolean]
+
+      return {
+        id,
+        name,
+        recent_issue_days: issueDates.get(id)?.size ?? 0,
+        latest_issue: latestIssue.get(id) ?? null,
+        max_score_4w:  maxScore4w.get(id) ?? 0,
+        week_activity,
+      }
+    })
     .sort((a, b) => b.recent_issue_days - a.recent_issue_days || a.name.localeCompare(b.name))
 }
 
