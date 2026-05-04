@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { DailyIssue, WeeklyGallery, MonthlyGallery } from '@/types'
 import { IssueCardFull } from '@/components/IssueCardFull'
 import { WeeklyBarChart } from '@/components/WeeklyBarChart'
-import { FILTER_OPTIONS, CATEGORY_LABEL, CAUSE_STYLE, normalizeCause, CATEGORY_ORDER } from '@/lib/issueCategories'
+import { CATEGORY_LABEL, CAUSE_STYLE, normalizeCause, CATEGORY_ORDER } from '@/lib/issueCategories'
 
 type TimelineEntry =
   | { kind: 'issue';   sortKey: string; data: DailyIssue }
@@ -33,19 +33,6 @@ function fmtMonth(m: string) {
   if (!m) return ''
   const [y, mo] = m.split('-').map(Number)
   return `${y}년 ${mo}월`
-}
-
-// ── 카테고리 필터 매칭 ─────────────────────────────────────────────────
-
-function matchesCategory(catKey: string, category_scores: DailyIssue['category_scores'], issue_cause?: string): boolean {
-  if (catKey === 'all') return true
-  const cs = category_scores
-  if (cs && Object.keys(cs).length > 0) {
-    const entry = cs[catKey as keyof typeof cs]
-    return !!(entry && entry.score > 0)
-  }
-  if (!issue_cause || issue_cause === '기타') return false
-  return normalizeCause(issue_cause) === CATEGORY_LABEL[catKey]
 }
 
 // ── 주간 카드 ─────────────────────────────────────────────────────────
@@ -78,7 +65,9 @@ function CategoryBar({ cs }: { cs?: WeeklyGallery['category_scores'] }) {
 }
 
 function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string> }) {
-  const kws = Array.isArray(w.keywords) ? w.keywords : []
+  const kws  = Array.isArray(w.keywords)  ? w.keywords  : []
+  const tops = Array.isArray(w.top_posts) ? w.top_posts : []
+  const mis  = Array.isArray(w.major_issues) ? w.major_issues : []
   const hasCounts = w.daily_counts && Object.keys(w.daily_counts).length > 0
   const hasAI = w.ai_summary && w.ai_summary !== '(주간 게시글 10건 미만 — AI 요약 제외)'
   const causeLabel = w.top_cause ? normalizeCause(w.top_cause) : null
@@ -91,6 +80,7 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
         <div className="w-px flex-1 bg-gray-200 mt-1" />
       </div>
       <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4 flex-1 space-y-3">
+        {/* 헤더 */}
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <span className="text-sm font-semibold text-blue-800">
@@ -103,26 +93,88 @@ function WeeklyEntryCard({ w, t }: { w: WeeklyGallery; t: Record<string, string>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className="text-xs text-blue-400 tabular-nums">{w.total_posts}건</span>
             {causeStyle && causeLabel && (
-              <span
-                className="text-[10px] px-1 py-0.5 rounded font-medium"
-                style={{ backgroundColor: causeStyle.bg, color: causeStyle.text }}
-              >
+              <span className="text-[10px] px-1 py-0.5 rounded font-medium"
+                style={{ backgroundColor: causeStyle.bg, color: causeStyle.text }}>
                 {causeLabel}
               </span>
             )}
           </div>
         </div>
+
+        {/* 카테고리 바 */}
         <CategoryBar cs={w.category_scores} />
+
+        {/* 일별 게시글 차트 */}
         {hasCounts && <WeeklyBarChart dailyCounts={w.daily_counts!} />}
-        {hasAI && (
-          <p className="text-sm text-blue-700 leading-relaxed">{w.ai_summary}</p>
+
+        {/* AI 요약 */}
+        {hasAI && <p className="text-sm text-blue-700 leading-relaxed">{w.ai_summary}</p>}
+
+        {/* 주요 이슈 */}
+        {mis.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-blue-400 font-medium">{t['common.major_issues'] ?? '주요 이슈'}</p>
+            {mis.map((mi, i) => (
+              <div key={i} className="bg-white/60 rounded p-2 space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-gray-800">{mi.title}</span>
+                  {mi.mention_count > 0 && (
+                    <span className="text-[11px] text-gray-400 tabular-nums shrink-0">{mi.mention_count}건</span>
+                  )}
+                </div>
+                {mi.detail && <p className="text-xs text-gray-600 leading-relaxed">{mi.detail}</p>}
+              </div>
+            ))}
+          </div>
         )}
+
+        {/* 감성 */}
+        {(w.sentiment?.positive || w.sentiment?.negative) && (
+          <div className="grid grid-cols-2 gap-2">
+            {w.sentiment.positive && (
+              <div className="bg-green-50 rounded p-2">
+                <p className="text-[10px] text-green-600 font-medium mb-0.5">{t['common.sentiment_positive'] ?? '긍정'}</p>
+                <p className="text-xs text-green-800 leading-snug">{w.sentiment.positive}</p>
+              </div>
+            )}
+            {w.sentiment.negative && (
+              <div className="bg-red-50 rounded p-2">
+                <p className="text-[10px] text-red-500 font-medium mb-0.5">{t['common.sentiment_negative'] ?? '부정'}</p>
+                <p className="text-xs text-red-800 leading-snug">{w.sentiment.negative}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 키워드 */}
         {kws.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {kws.slice(0, 5).map(([kw]) => (
+            {kws.slice(0, 8).map(([kw, cnt]) => (
               <span key={kw} className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
-                #{kw}
+                #{kw} <span className="text-blue-400 tabular-nums">{cnt}</span>
               </span>
+            ))}
+          </div>
+        )}
+
+        {/* 인기 게시글 */}
+        {tops.length > 0 && (
+          <div className="space-y-1 pt-1 border-t border-blue-100">
+            <p className="text-xs text-blue-400 font-medium mb-1">
+              {t['common.top_posts'] ?? '인기 게시글'} TOP {tops.length}
+            </p>
+            {tops.map((p, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <span className="text-gray-300 w-4 shrink-0 tabular-nums mt-0.5">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <a href={p.링크} target="_blank" rel="noopener noreferrer"
+                    className="text-gray-800 hover:underline line-clamp-1">{p.제목}</a>
+                  <div className="text-xs text-gray-400 mt-0.5 flex gap-2.5 tabular-nums">
+                    <span>댓글 {p.댓글수}</span>
+                    <span>추천 {p.추천수}</span>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}
