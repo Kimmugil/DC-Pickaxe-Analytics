@@ -21,13 +21,14 @@ _SCOPES = [
 _HEADERS = {
     "daily_issues": [
         "date", "run_id", "gallery_id", "gallery_name",
-        "posts_total", "avg_7d", "avg_same_weekday", "momentum_avg",
-        "issue_score", "has_issue", "is_borderline",
+        "posts_total", "avg_7d", "issue_score", "has_issue",
         "keywords", "top_posts", "ai_summary",
         "temperature_tag", "issue_cause",
         # v2: 구조화 분석 필드
         "headline", "category_scores", "major_issues",
         "sentiment_positive", "sentiment_negative",
+        # v2.1: 추가 지표 (기존 시트에 컬럼이 없으면 _ensure_headers가 끝에 추가)
+        "avg_same_weekday", "momentum_avg", "is_borderline",
     ],
     "weekly_galleries": [
         "week_start", "week_end", "run_id", "gallery_id", "gallery_name",
@@ -131,29 +132,8 @@ def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
     """
     ws = _spreadsheet().worksheet("daily_issues")
     _ensure_headers(ws, _HEADERS["daily_issues"])
-    rows = [
-        [
-            date, run_id,
-            r.get("gallery_id", ""), r.get("gallery_name", ""),
-            r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
-            round(float(r.get("avg_same_weekday", 0)), 1),
-            round(float(r.get("momentum_avg", 0)), 1),
-            r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
-            1 if r.get("is_borderline") else 0,
-            json.dumps(r.get("keywords", []), ensure_ascii=False),
-            json.dumps(r.get("top_posts", []), ensure_ascii=False),
-            r.get("ai_summary", ""),
-            r.get("temperature_tag", ""),
-            r.get("issue_cause", ""),
-            # v2: 구조화 분석 필드
-            r.get("headline", ""),
-            json.dumps(r.get("category_scores", {}), ensure_ascii=False),
-            json.dumps(r.get("major_issues", []), ensure_ascii=False),
-            r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
-            r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
-        ]
-        for r in results
-    ]
+    headers = ws.row_values(1)
+    rows = [_build_daily_row(r, date, run_id, headers) for r in results]
     if rows:
         ws.append_rows(rows, value_input_option="RAW")
 
@@ -185,7 +165,7 @@ def upsert_daily_issues(results: list[dict], date: str, run_id: str) -> None:
     update_batch: list[tuple[int, list]] = []
 
     for r in results:
-        row_data = _build_daily_row(r, date, run_id, len(headers))
+        row_data = _build_daily_row(r, date, run_id, headers)
         key = (date, r.get("gallery_id", ""))
         if key in row_map:
             update_batch.append((row_map[key], row_data))
@@ -198,37 +178,42 @@ def upsert_daily_issues(results: list[dict], date: str, run_id: str) -> None:
 
     # 신규 행 append
     if new_rows:
-        append_rows = [_build_daily_row(r, date, run_id, len(headers)) for r in new_rows]
+        append_rows = [_build_daily_row(r, date, run_id, headers) for r in new_rows]
         ws.append_rows(append_rows, value_input_option="RAW")
 
     print(f"  upsert: {len(update_batch)}행 업데이트 / {len(new_rows)}행 신규 추가", flush=True)
 
 
-def _build_daily_row(r: dict, date: str, run_id: str, total_cols: int) -> list:
-    """daily_issues 헤더 순서에 맞는 행 데이터를 반환합니다."""
-    base = [
-        date, run_id,
-        r.get("gallery_id", ""), r.get("gallery_name", ""),
-        r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
-        round(float(r.get("avg_same_weekday", 0)), 1),
-        round(float(r.get("momentum_avg", 0)), 1),
-        r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
-        1 if r.get("is_borderline") else 0,
-        json.dumps(r.get("keywords", []), ensure_ascii=False),
-        json.dumps(r.get("top_posts", []), ensure_ascii=False),
-        r.get("ai_summary", ""),
-        r.get("temperature_tag", ""),
-        r.get("issue_cause", ""),
-        r.get("headline", ""),
-        json.dumps(r.get("category_scores", {}), ensure_ascii=False),
-        json.dumps(r.get("major_issues", []), ensure_ascii=False),
-        r.get("sentiment", {}).get("positive", "") if isinstance(r.get("sentiment"), dict) else "",
-        r.get("sentiment", {}).get("negative", "") if isinstance(r.get("sentiment"), dict) else "",
-    ]
-    # 혹시 헤더보다 짧으면 빈 문자열로 패딩
-    while len(base) < total_cols:
-        base.append("")
-    return base
+def _build_daily_row(r: dict, date: str, run_id: str, headers: list[str]) -> list:
+    """
+    daily_issues 헤더 목록에 맞는 행 데이터를 컬럼명 기반으로 반환합니다.
+    컬럼 순서가 달라도 올바른 열에 데이터가 기록됩니다.
+    """
+    sentiment = r.get("sentiment", {})
+    data_map: dict[str, object] = {
+        "date":               date,
+        "run_id":             run_id,
+        "gallery_id":         r.get("gallery_id", ""),
+        "gallery_name":       r.get("gallery_name", ""),
+        "posts_total":        r.get("posts_total", 0),
+        "avg_7d":             round(float(r.get("avg_7d", 0)), 1),
+        "avg_same_weekday":   round(float(r.get("avg_same_weekday", 0)), 1),
+        "momentum_avg":       round(float(r.get("momentum_avg", 0)), 1),
+        "issue_score":        r.get("issue_score", 0),
+        "has_issue":          1 if r.get("has_issue") else 0,
+        "is_borderline":      1 if r.get("is_borderline") else 0,
+        "keywords":           json.dumps(r.get("keywords", []), ensure_ascii=False),
+        "top_posts":          json.dumps(r.get("top_posts", []), ensure_ascii=False),
+        "ai_summary":         r.get("ai_summary", ""),
+        "temperature_tag":    r.get("temperature_tag", ""),
+        "issue_cause":        r.get("issue_cause", ""),
+        "headline":           r.get("headline", ""),
+        "category_scores":    json.dumps(r.get("category_scores", {}), ensure_ascii=False),
+        "major_issues":       json.dumps(r.get("major_issues", []), ensure_ascii=False),
+        "sentiment_positive": sentiment.get("positive", "") if isinstance(sentiment, dict) else "",
+        "sentiment_negative": sentiment.get("negative", "") if isinstance(sentiment, dict) else "",
+    }
+    return [data_map.get(h, "") for h in headers]
 
 
 # ── 주간 갤러리별 적재 ────────────────────────────────────────────────
