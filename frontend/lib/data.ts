@@ -168,8 +168,18 @@ export async function getDailyByDate(date: string): Promise<DailyIssue[]> {
     recentMap.get(r.gallery_id)!.add(r.date)
   }
 
-  return rows
-    .filter(r => r.date === date)
+  // (date, gallery_id) 기준 중복 제거: run_id가 더 큰(최신) 행 우선
+  const deduped = new Map<string, Record<string, string>>()
+  for (const r of rows) {
+    if (r.date !== date) continue
+    const key = r.gallery_id ?? ''
+    const existing = deduped.get(key)
+    if (!existing || (r.run_id ?? '') >= (existing.run_id ?? '')) {
+      deduped.set(key, r)
+    }
+  }
+
+  return Array.from(deduped.values())
     .map(r => toDaily(r, recentMap.get(r.gallery_id)?.size ?? 0))
 }
 

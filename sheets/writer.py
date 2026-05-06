@@ -21,7 +21,8 @@ _SCOPES = [
 _HEADERS = {
     "daily_issues": [
         "date", "run_id", "gallery_id", "gallery_name",
-        "posts_total", "avg_7d", "issue_score", "has_issue",
+        "posts_total", "avg_7d", "avg_same_weekday", "momentum_avg",
+        "issue_score", "has_issue", "is_borderline",
         "keywords", "top_posts", "ai_summary",
         "temperature_tag", "issue_cause",
         # v2: 구조화 분석 필드
@@ -135,7 +136,10 @@ def append_daily_issues(results: list[dict], date: str, run_id: str) -> None:
             date, run_id,
             r.get("gallery_id", ""), r.get("gallery_name", ""),
             r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
+            round(float(r.get("avg_same_weekday", 0)), 1),
+            round(float(r.get("momentum_avg", 0)), 1),
             r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
+            1 if r.get("is_borderline") else 0,
             json.dumps(r.get("keywords", []), ensure_ascii=False),
             json.dumps(r.get("top_posts", []), ensure_ascii=False),
             r.get("ai_summary", ""),
@@ -206,7 +210,10 @@ def _build_daily_row(r: dict, date: str, run_id: str, total_cols: int) -> list:
         date, run_id,
         r.get("gallery_id", ""), r.get("gallery_name", ""),
         r.get("posts_total", 0), round(float(r.get("avg_7d", 0)), 1),
+        round(float(r.get("avg_same_weekday", 0)), 1),
+        round(float(r.get("momentum_avg", 0)), 1),
         r.get("issue_score", 0), 1 if r.get("has_issue") else 0,
+        1 if r.get("is_borderline") else 0,
         json.dumps(r.get("keywords", []), ensure_ascii=False),
         json.dumps(r.get("top_posts", []), ensure_ascii=False),
         r.get("ai_summary", ""),
