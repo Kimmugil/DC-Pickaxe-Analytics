@@ -13,11 +13,18 @@ export interface CategoryScore {
   summary: string
 }
 
+export interface RefPost {
+  title: string
+  url: string
+  comment_count: number
+}
+
 export interface MajorIssue {
   title: string
   detail: string
   mention_count: number
-  ref_url: string
+  ref_url: string        // AI가 선택한 단일 링크 (레거시, fallback용)
+  ref_posts?: RefPost[]  // 키워드 매핑으로 찾은 실제 관련 게시글
 }
 
 export interface DailyIssue {

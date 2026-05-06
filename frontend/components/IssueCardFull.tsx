@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import type { DailyIssue } from '@/types'
+import type { DailyIssue, MajorIssue } from '@/types'
 import { CATEGORY_ORDER, CATEGORY_LABEL, CAUSE_STYLE, normalizeCause } from '@/lib/issueCategories'
 import { tp } from '@/lib/textUtils'
 
@@ -47,6 +47,63 @@ interface IssueCardFullProps {
   /** 토글 접기 모드 — 헤드라인·AI요약까지만 기본 표시, 상세는 버튼으로 펼침 */
   collapsible?: boolean
 }
+
+// ── 주요 이슈 단일 항목 ──────────────────────────────────────────────
+
+function MajorIssueRow({ m }: { m: MajorIssue }) {
+  const [open, setOpen] = useState(false)
+  const hasPosts = Array.isArray(m.ref_posts) && m.ref_posts.length > 0
+  // ref_posts 없을 때 단일 ref_url로 fallback
+  const fallbackUrl = !hasPosts && m.ref_url ? m.ref_url : null
+
+  return (
+    <div className="text-xs space-y-0.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="font-semibold text-gray-800">{m.title}</span>
+        {m.mention_count > 0 && (
+          <span className="text-gray-400 tabular-nums">언급 {m.mention_count}건</span>
+        )}
+        {/* 관련 게시글 토글 버튼 */}
+        {hasPosts && (
+          <button
+            onClick={() => setOpen(v => !v)}
+            className="flex items-center gap-0.5 text-blue-400 hover:text-blue-600 tabular-nums"
+          >
+            관련 게시글 {m.ref_posts!.length}건
+            <svg
+              className={`w-3 h-3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        )}
+        {/* fallback: AI 단일 링크 */}
+        {fallbackUrl && (
+          <a href={fallbackUrl} target="_blank" rel="noopener noreferrer"
+            className="text-blue-400 hover:underline">↗</a>
+        )}
+      </div>
+      {m.detail && <p className="text-gray-500 leading-relaxed">{m.detail}</p>}
+      {/* 관련 게시글 목록 */}
+      {hasPosts && open && (
+        <div className="mt-1.5 space-y-1 pl-2 border-l-2 border-gray-100">
+          {m.ref_posts!.map((rp, j) => (
+            <div key={j} className="flex items-start gap-2">
+              <a href={rp.url} target="_blank" rel="noopener noreferrer"
+                className="text-gray-600 hover:underline line-clamp-1 flex-1 leading-snug">
+                {rp.title}
+              </a>
+              <span className="text-gray-400 tabular-nums shrink-0">댓글 {rp.comment_count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 공통 이슈 카드 본문 ───────────────────────────────────────────────
 
 export function IssueCardFull({ issue, t, headerLeft, showStats = true, collapsible = false }: IssueCardFullProps) {
   const [expanded, setExpanded] = useState(!collapsible)
@@ -164,19 +221,7 @@ export function IssueCardFull({ issue, t, headerLeft, showStats = true, collapsi
           {majors.length > 0 && (
             <div className="space-y-2.5 pt-2 border-t border-gray-100">
               {majors.map((m, i) => (
-                <div key={i} className="text-xs space-y-0.5">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-gray-800">{m.title}</span>
-                    {m.mention_count > 0 && (
-                      <span className="text-gray-400 tabular-nums">언급 {m.mention_count}건</span>
-                    )}
-                    {m.ref_url && (
-                      <a href={m.ref_url} target="_blank" rel="noopener noreferrer"
-                        className="text-blue-400 hover:underline">↗</a>
-                    )}
-                  </div>
-                  {m.detail && <p className="text-gray-500 leading-relaxed">{m.detail}</p>}
-                </div>
+                <MajorIssueRow key={i} m={m} />
               ))}
             </div>
           )}

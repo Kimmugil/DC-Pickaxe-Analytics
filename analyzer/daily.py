@@ -82,6 +82,38 @@ def _sample_for_ai(posts: list[dict]) -> list[dict]:
     return result
 
 
+def _match_posts_for_issue(issue_title: str, posts: list[dict], top_n: int = 5) -> list[dict]:
+    """
+    이슈 제목 키워드로 관련 게시글을 실제 매핑.
+
+    이슈 제목을 공백·특수문자로 토큰화하여 각 게시글 제목에서
+    매칭 토큰 수를 계산한다. 매칭 게시글을 (매칭수, 댓글수) 내림차순으로
+    최대 top_n개 반환. 매칭 없으면 빈 리스트.
+    """
+    import re
+    tokens = [t for t in re.split(r'[\s\·\-\,\.\!\?\/\(\)\[\]「」【】]+', issue_title)
+              if len(t) >= 2]
+    if not tokens:
+        return []
+
+    scored: list[tuple[int, int, dict]] = []
+    for p in posts:
+        title = str(p.get("제목", ""))
+        match_count = sum(1 for t in tokens if t in title)
+        if match_count > 0:
+            scored.append((match_count, int(p.get("댓글수", 0) or 0), p))
+
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    result = []
+    for _, _, p in scored[:top_n]:
+        result.append({
+            "title":         str(p.get("제목", "")),
+            "url":           str(p.get("링크", "")),
+            "comment_count": int(p.get("댓글수", 0) or 0),
+        })
+    return result
+
+
 def _issue_posts(posts: list[dict], n: int = 5) -> list[dict]:
     """댓글 수 기준 정렬 — 가장 많이 논의된 = 이슈를 일으킨 게시글."""
     scored = sorted(posts, key=lambda p: int(p.get("댓글수", 0) or 0), reverse=True)
@@ -245,6 +277,7 @@ def _analyze_gallery(
         "keywords":         keywords,
         "top_posts":        top5,
         "ai_samples":       ai_samples,   # AI 분석용 본문 포함 샘플
+        "_posts_all":       posts_today,  # 이슈 매핑용 (최종 출력 전 제거)
         "ai_summary":       "",
         "headline":         "",
         "temperature_tag":  "",
@@ -321,6 +354,10 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
                 r["category_scores"] = ai.get("category_scores", {})
                 r["major_issues"]    = ai.get("major_issues", [])
                 r["sentiment"]       = ai.get("sentiment", {"positive": "", "negative": ""})
+                # 키워드 매핑: 각 이슈 제목으로 실제 관련 게시글 검색
+                posts_all = r.get("_posts_all", [])
+                for mi in r["major_issues"]:
+                    mi["ref_posts"] = _match_posts_for_issue(mi["title"], posts_all)
                 if verbose:
                     print(f"  완료: {r['gallery_name']} [{r['temperature_tag']}]", flush=True)
             except Exception as e:
@@ -352,5 +389,10 @@ def run(target_date: str | None = None, verbose: bool = True) -> list[dict]:
             except Exception as e:
                 r["ai_summary"] = ""
                 print(f"  AI 요약 실패(경계): {r['gallery_name']} - {e}", flush=True)
+
+    # 내부 임시 필드 제거 (최종 출력에 포함되지 않도록)
+    for r in results:
+        r.pop("_posts_all", None)
+        r.pop("ai_samples", None)
 
     return results
