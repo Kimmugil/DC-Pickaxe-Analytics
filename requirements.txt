@@ -1,0 +1,6 @@
+beautifulsoup4>=4.12
+pillow>=10
+psycopg[binary]>=3.2
+requests>=2.31
+kiwipiepy>=0.20
+google-genai>=1.0
