@@ -2,6 +2,8 @@
 import { useActionState } from 'react'
 import { login } from './actions'
 
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const [state, action, pending] = useActionState(login, { error: '' })
   return (

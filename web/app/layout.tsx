@@ -3,6 +3,8 @@ import './globals.css'
 import { Nav } from '@/components/Nav'
 import { getTexts, T } from '@/lib/texts'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: '디씨곡괭이 정련소',
   description: 'DC인사이드 갤러리 동향 분석',

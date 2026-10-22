@@ -1,4 +1,7 @@
+import dns from 'node:dns'
 import postgres from 'postgres'
+
+dns.setDefaultResultOrder('ipv4first')   // Vercel 빌드·실행 환경은 IPv6 바깥 접속이 안 되는 경우가 있어 IPv4를 먼저 쓴다
 
 type Sql = ReturnType<typeof postgres>
 const g = globalThis as unknown as { __sql?: Sql }
