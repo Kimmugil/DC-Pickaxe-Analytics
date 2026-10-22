@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { Card, Chip, PageHeader, Section, Tile } from '@/components/kit'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
 
 function ago(mins: number | null) {
   if (mins == null) return '기록 없음'
@@ -26,7 +27,7 @@ export default async function AdminHome() {
         from galleries g join daily_coverage c using (gallery_id)
         where g.is_active and c.day >= current_date - 14 group by 1 order by avg_c`,
     sql`select gallery_id, kind, last_page from crawl_cursor where not done`,
-    sql`select pg_database_size(current_database())::bigint as bytes, (select count(*)::int from posts) as posts, (select count(*)::int from comments) as comments`,
+    sql`select pg_database_size(current_database())::bigint as bytes, (select greatest(reltuples, 0)::bigint from pg_class where oid = 'public.posts'::regclass) as posts`,
     sql`select value from settings where key = 'collector.blocked_until'`,
     sql`select coalesce(sum(calls), 0)::int as calls, coalesce(sum(input_tokens), 0)::bigint as tin, coalesce(sum(output_tokens), 0)::bigint as tout
         from ai_usage where day >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date)`,
