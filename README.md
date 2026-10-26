@@ -65,7 +65,7 @@ npm run typecheck
 ```
 - **관리자 비밀번호 정하기** (한 번만, 직접 실행): `.venv\Scripts\python.exe tools\set_admin_password.py` → `web/.env.local`에 해시와 세션 키가 저장된다.
 - `web/.env.local` 에 필요한 값: `DATABASE_URL`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET` (+ 이 회사 PC에서만 `DB_SSL_INSECURE=1`, `NODE_TLS_REJECT_UNAUTHORIZED=0`).
-  Vercel 배포 때는 앞 세 개만 환경변수로 넣는다. `DATABASE_URL`은 Supabase의 **Transaction pooler**(포트 6543) 주소를 권장.
+  Vercel 배포 때는 앞 세 개만 환경변수로 넣는다. `DATABASE_URL`은 Supabase의 **Session pooler**(포트 5432) 주소를 쓴다. (Transaction pooler 6543 주소를 넣어도 코드가 5432로 바꿔 접속한다)
 - 관리자: 갤러리 추가·수정·삭제, 이벤트 후보 확인, 이슈 맞음/틀림, 화면 문구, 반복글 규칙, 과장어 사전, 설정값. 로그인은 15분에 5회 실패하면 잠긴다.
 - 알려진 함정: 서버 액션 폼에서 입력칸 이름을 `id`로 쓰면 버튼 값이 서버에 전달되지 않는다(`event_id`, `rule_id`처럼 쓸 것).
 - 예전 방식(이관된) 리포트는 `extra`가 비어 있고 "예전 방식 점수" 표시가 붙는다. 점수 8점 미만이던 옛 '이슈'는 화면에서 '경계'로 보인다.
